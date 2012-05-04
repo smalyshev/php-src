@@ -470,7 +470,7 @@ static int sapi_cgi_send_headers(sapi_headers_struct *sapi_headers TSRMLS_DC)
 	while (h) {
 		/* prevent CRLFCRLF */
 		if (h->header_len) {
-			if (h->header_len > sizeof("Status:")-1 && 
+			if (h->header_len > sizeof("Status:")-1 &&
 				strncasecmp(h->header, "Status:", sizeof("Status:")-1) == 0
 			) {
 				if (!ignore_status) {
@@ -611,7 +611,7 @@ static char *sapi_fcgi_read_cookies(TSRMLS_D)
 
 static void cgi_php_load_env_var(char *var, unsigned int var_len, char *val, unsigned int val_len, void *arg TSRMLS_DC)
 {
-	zval *array_ptr = (zval*)arg;	
+	zval *array_ptr = (zval*)arg;
 	int filter_arg = (array_ptr == PG(http_globals)[TRACK_VARS_ENV])?PARSE_ENV:PARSE_SERVER;
 	unsigned int new_val_len;
 
@@ -791,12 +791,12 @@ static void php_cgi_ini_activate_user_config(char *path, int path_len, const cha
 		}
 
 		/* we have to test if path is part of DOCUMENT_ROOT.
-		  if it is inside the docroot, we scan the tree up to the docroot 
+		  if it is inside the docroot, we scan the tree up to the docroot
 			to find more user.ini, if not we only scan the current path.
 		  */
 #ifdef PHP_WIN32
 		if (strnicmp(s1, s2, s_len) == 0) {
-#else 
+#else
 		if (strncmp(s1, s2, s_len) == 0) {
 #endif
 			ptr = s2 + start;  /* start is the point where doc_root ends! */
@@ -893,7 +893,7 @@ static int sapi_cgi_activate(TSRMLS_D)
 				zend_str_tolower(doc_root, doc_root_len);
 #endif
 				php_cgi_ini_activate_user_config(path, path_len, doc_root, doc_root_len, doc_root_len - 1 TSRMLS_CC);
-				
+
 #ifdef PHP_WIN32
 				efree(doc_root);
 #endif
@@ -1043,7 +1043,7 @@ static int is_valid_path(const char *path)
 					p++;
 					if (UNEXPECTED(!*p) || UNEXPECTED(IS_SLASH(*p))) {
 						return 0;
-					}											
+					}
 				}
 			}
 		}
@@ -1807,10 +1807,15 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	if(query_string = getenv("QUERY_STRING")) {
+	if((query_string = getenv("QUERY_STRING")) != NULL && strchr(query_string, '=') == NULL) {
+		/* we've got query string that has no = - apache CGI will pass it to command line */
+		char *p;
 		decoded_query_string = strdup(query_string);
 		php_url_decode(decoded_query_string, strlen(decoded_query_string));
-		if(*decoded_query_string == '-' && strchr(decoded_query_string, '=') == NULL) {
+		for (p = decoded_query_string; *p == ' '; p++) {
+			/* skip all leading spaces */
+		}
+		if(*p == '-') {
 			skip_getopt = 1;
 		}
 		free(decoded_query_string);
@@ -2074,7 +2079,7 @@ consult the installation file that came with this distribution, or visit \n\
 	}
 
 	zend_first_try {
-		while ((c = php_getopt(argc, argv, OPTIONS, &php_optarg, &php_optind, 1, 2)) != -1) {
+		while (!skip_getopt && (c = php_getopt(argc, argv, OPTIONS, &php_optarg, &php_optind, 1, 2)) != -1) {
 			switch (c) {
 				case 'T':
 					benchmark = 1;

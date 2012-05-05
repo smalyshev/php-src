@@ -1812,7 +1812,7 @@ int main(int argc, char *argv[])
 		char *p;
 		decoded_query_string = strdup(query_string);
 		php_url_decode(decoded_query_string, strlen(decoded_query_string));
-		for (p = decoded_query_string; *p == ' '; p++) {
+		for (p = decoded_query_string; *p == ' ' || *p == '\t'; p++) {
 			/* skip all leading spaces */
 		}
 		if(*p == '-') {

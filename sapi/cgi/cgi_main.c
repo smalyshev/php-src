@@ -1820,6 +1820,11 @@ int main(int argc, char *argv[])
 		}
 		free(decoded_query_string);
 	}
+#if PHP_DISABLE_CGI_OPTIONS
+	if(cgi) {
+		skip_getopt = 1;
+	}
+#endif
 
 	while (!skip_getopt && (c = php_getopt(argc, argv, OPTIONS, &php_optarg, &php_optind, 0, 2)) != -1) {
 		switch (c) {

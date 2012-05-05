@@ -4,6 +4,8 @@ dnl
 
 PHP_ARG_ENABLE(cgi,,
 [  --disable-cgi           Disable building CGI version of PHP], yes, no)
+PHP_ARG_ENABLE(cgi-options,,
+[  --disable-cgi-options   Disable parsing command-line options when running as CGI], yes, no)
 
 dnl
 dnl CGI setup
@@ -73,4 +75,9 @@ if test "$PHP_CGI" != "no"; then
     PHP_SUBST(BUILD_CGI)
 else
   AC_MSG_RESULT(yes)
+fi
+
+if test "$PHP_CGI_OPTIONS" == "no"; then
+	AC_DEFINE([PHP_DISABLE_CGI_OPTIONS], [1],
+        [Define if CGI options should be disabled])
 fi

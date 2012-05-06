@@ -1812,7 +1812,7 @@ int main(int argc, char *argv[])
 		char *p;
 		decoded_query_string = strdup(query_string);
 		php_url_decode(decoded_query_string, strlen(decoded_query_string));
-		for (p = decoded_query_string; *p == ' ' || *p == '\t'; p++) {
+		for (p = decoded_query_string; *p &&  *p <= ' '; p++) {
 			/* skip all leading spaces */
 		}
 		if(*p == '-') {
@@ -1820,11 +1820,6 @@ int main(int argc, char *argv[])
 		}
 		free(decoded_query_string);
 	}
-#if PHP_DISABLE_CGI_OPTIONS
-	if(cgi) {
-		skip_getopt = 1;
-	}
-#endif
 
 	while (!skip_getopt && (c = php_getopt(argc, argv, OPTIONS, &php_optarg, &php_optind, 0, 2)) != -1) {
 		switch (c) {

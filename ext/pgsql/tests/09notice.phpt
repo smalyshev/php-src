@@ -6,6 +6,7 @@ PostgreSQL notice function
 include("skipif.inc");
 
 _skip_lc_messages();
+if(getenv("TRAVIS")) die("skip XFAIL on Travis.");
 
 ?>
 --INI--

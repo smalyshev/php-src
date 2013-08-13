@@ -6,6 +6,8 @@ require_once('skipif.inc');
 
 _skip_lc_messages();
 	
+if(getenv("TRAVIS")) die("skip XFAIL on Travis.");
+
 @pg_query($conn, "CREATE LANGUAGE 'plpgsql' HANDLER plpgsql_call_handler LANCOMPILER 'PL/pgSQL'");
 $res = @pg_query($conn, "CREATE OR REPLACE FUNCTION test_notice() RETURNS boolean AS '
 begin

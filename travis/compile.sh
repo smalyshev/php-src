@@ -12,6 +12,9 @@
 --with-gd \
 --with-jpeg-dir=/usr \
 --with-png-dir=/usr \
+--with-freetype-dir=/usr \
+--with-t1lib=/usr \
+--with-xpm-dir=/usr \
 --enable-exif \
 --enable-zip \
 --with-zlib \
@@ -34,6 +37,17 @@
 --enable-sockets \
 --with-bz2 \
 --with-openssl \
+--enable-bcmath \
+--enable-fpm \
+--with-mhash \
+--enable-ftp \
 --with-gmp \
---enable-bcmath
+--with-imap \
+--with-imap-ssl \
+--with-kerberos \
+--with-pspell \
+--with-enchant \
+--with-snmp \
+--enable-wddx 
 make --quiet
+./sapi/cli/php -i

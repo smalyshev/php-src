@@ -18,6 +18,10 @@ env:
     matrix:
       - REPORT_EXIT_STATUS=1
 
+before_install:
+  - sudo apt-get update -qq
+  - sudo apt-get install librecode-dev libpspell-dev libenchant-dev libldap2-dev libsasl2-dev libsnmp-dev
+
 before_script:
     # Compile PHP
     - ./travis/compile.sh

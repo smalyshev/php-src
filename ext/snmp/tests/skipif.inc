@@ -10,4 +10,6 @@ require_once (dirname(__FILE__).'/snmp_include.inc');
 
 if (snmpget($hostname, $community, '.1.3.6.1.2.1.1.1.0', $timeout) === false)
 	die('NO SNMPD on this host or community invalid');
+if (snmp2_get($hostname, $community, '.1.3.6.1.2.1.1.1.0', $timeout, $retries) === false) 
+	die('NO SNMPD on this host or community invalid');
 

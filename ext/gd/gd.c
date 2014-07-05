@@ -2556,35 +2556,26 @@ PHP_FUNCTION(imagecreatefromgd2part)
 static void _php_image_output(INTERNAL_FUNCTION_PARAMETERS, int image_type, char *tn, void (*func_p)())
 {
 	zval *imgind;
-	char *file = NULL;
-	long quality = 0, type = 0;
+	long quality = -1, type = 1;
 	gdImagePtr im;
 	char *fn = NULL;
 	FILE *fp;
-	int file_len = 0, argc = ZEND_NUM_ARGS();
+	int file_len = 0;
 	int q = -1, i, t = 1;
 
 	/* The quality parameter for Wbmp stands for the threshold when called from image2wbmp() */
 	/* When called from imagewbmp() the quality parameter stands for the foreground color. Default: black. */
 	/* The quality parameter for gd2 stands for chunk size */
 
-	if (zend_parse_parameters(argc TSRMLS_CC, "r|pll", &imgind, &file, &file_len, &quality, &type) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "r|pll", &imgind, &fn, &file_len, &quality, &type) == FAILURE) {
 		return;
 	}
 
 	ZEND_FETCH_RESOURCE(im, gdImagePtr, &imgind, -1, "Image", le_gd);
-
-	if (argc > 1) {
-		fn = file;
-		if (argc == 3) {
 			q = quality;
-		}
-		if (argc == 4) {
 			t = type;
-		}
-	}
 
-	if (argc >= 2 && file_len) {
+	if (fn != NULL && file_len) {
 		PHP_GD_CHECK_OPEN_BASEDIR(fn, "Invalid filename");
 
 		fp = VCWD_FOPEN(fn, "wb");
@@ -3279,7 +3270,7 @@ PHP_FUNCTION(imagecolorstotal)
 PHP_FUNCTION(imagecolortransparent)
 {
 	zval *IM;
-	long COL = 0;
+	long COL = -1;
 	gdImagePtr im;
 	int argc = ZEND_NUM_ARGS();
 
@@ -3303,7 +3294,7 @@ PHP_FUNCTION(imageinterlace)
 {
 	zval *IM;
 	int argc = ZEND_NUM_ARGS();
-	long INT = 0;
+	long INT = 1;
 	gdImagePtr im;
 
 	if (zend_parse_parameters(argc TSRMLS_CC, "r|l", &IM, &INT) == FAILURE) {
@@ -4273,7 +4264,7 @@ PHP_FUNCTION(imagepsbbox)
 		ZEND_WRONG_PARAM_COUNT();
 	}
 	
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "srl|lld", &str, &str_len, &fnt, &sz, &sp, &wd, &angle) == FAILURE) {
+	if (zend_parse_parameters_ex(ZEND_PARSE_PARAMS_NODEFAULT, ZEND_NUM_ARGS() TSRMLS_CC, "srl|lld", &str, &str_len, &fnt, &sz, &sp, &wd, &angle) == FAILURE) {
 		return;
 	}
 	

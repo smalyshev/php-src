@@ -554,13 +554,12 @@ static void php_dba_update(INTERNAL_FUNCTION_PARAMETERS, int mode)
 	int val_len;
 	zval *id;
 	dba_info *info = NULL;
-	int ac = ZEND_NUM_ARGS();
 	zval *key;
 	char *val;
 	char *key_str, *key_free;
 	size_t key_len;
 
-	if (zend_parse_parameters(ac TSRMLS_CC, "zsr", &key, &val, &val_len, &id) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "zsr", &key, &val, &val_len, &id) == FAILURE) {
 		return;
 	}
 
@@ -634,7 +633,7 @@ static void php_dba_open(INTERNAL_FUNCTION_PARAMETERS, int persistent)
 	
 	/* we pass additional args to the respective handler */
 	args = safe_emalloc(ac, sizeof(zval *), 0);
-	if (zend_get_parameters_array_ex(ac, args) != SUCCESS) {
+	if (zend_get_parameters_array_nodefault(ac, args TSRMLS_CC) != SUCCESS) {
 		FREENOW;
 		WRONG_PARAM_COUNT;
 	}

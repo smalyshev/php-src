@@ -12,7 +12,7 @@
    | obtain it through the world-wide-web, please send a note to          |
    | license@php.net so we can mail you a copy immediately.               |
    +----------------------------------------------------------------------+
-   | Authors: Stig Sæther Bakken <ssb@php.net>                            |
+   | Authors: Stig Sï¿½ther Bakken <ssb@php.net>                            |
    |          Andreas Karajannis <Andreas.Karajannis@gmd.de>              |
    |          Frank M. Kromann <frank@kromann.info>  Support for DB/2 CLI |
    |          Kevin N. Shallow <kshallow@tampabay.rr.com> Birdstep Support|
@@ -1966,7 +1966,7 @@ PHP_FUNCTION(odbc_fetch_row)
 	SQLUSMALLINT RowStatus[1];
 #endif
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "r|l", &pv_res, &pv_row) == FAILURE) {
+	if (zend_parse_parameters_ex(ZEND_PARSE_PARAMS_NODEFAULT, ZEND_NUM_ARGS() TSRMLS_CC, "r|l", &pv_res, &pv_row) == FAILURE) {
 		return;
 	}
 	
@@ -2221,7 +2221,7 @@ PHP_FUNCTION(odbc_result_all)
 	}
 	
 	/* Start table tag */
-	if (ZEND_NUM_ARGS() == 1) {
+	if (pv_format == NULL) {
 		php_printf("<table><tr>");
 	} else {
 		php_printf("<table %s ><tr>", pv_format);
@@ -2498,7 +2498,6 @@ void odbc_do_connect(INTERNAL_FUNCTION_PARAMETERS, int persistent)
 	
 	cur_opt = pv_opt;
 	
-	if (ZEND_NUM_ARGS() > 3) {
 		/* Confirm the cur_opt range */
 		if (! (cur_opt == SQL_CUR_USE_IF_NEEDED || 
 			cur_opt == SQL_CUR_USE_ODBC || 
@@ -2507,7 +2506,6 @@ void odbc_do_connect(INTERNAL_FUNCTION_PARAMETERS, int persistent)
 			php_error_docref(NULL TSRMLS_CC, E_WARNING, "Invalid Cursor type (%d)", cur_opt);
 			RETURN_FALSE;
 		}
-	}
 
 	if (ODBCG(allow_persistent) <= 0) {
 		persistent = 0;
@@ -2956,7 +2954,7 @@ static void php_odbc_lasterror(INTERNAL_FUNCTION_PARAMETERS, int mode)
 		len = SQL_MAX_MESSAGE_LENGTH;
 	}
 
-	if (ZEND_NUM_ARGS() == 1) {
+	if (pv_handle) {
 		ZEND_FETCH_RESOURCE2(conn, odbc_connection *, &pv_handle, -1, "ODBC-Link", le_conn, le_pconn);
 		ptr = ecalloc(len + 1, 1);
 		if (mode == 0) {

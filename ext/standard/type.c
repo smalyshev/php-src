@@ -134,27 +134,13 @@ PHP_FUNCTION(settype)
 PHP_FUNCTION(intval)
 {
 	zval **num;
-	long arg_base;
+	long arg_base = 10;
 	int base;
 
-	switch (ZEND_NUM_ARGS()) {
-		case 1:
-			if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "Z", &num) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "Z|l", &num, &arg_base) == FAILURE) {
 				return;
 			}
-			base = 10;
-			break;
-
-		case 2:
-			if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "Zl", &num, &arg_base) == FAILURE) {
-				return;
-			}
-			base = arg_base;
-			break;
-
-		default:
-			WRONG_PARAM_COUNT;
-	}
+	base = (int)arg_base;
 
 	RETVAL_ZVAL(*num, 1, 0);
 	convert_to_long_base(return_value, base);
@@ -384,7 +370,7 @@ PHP_FUNCTION(is_callable)
 	if (syntax_only) {
 		check_flags |= IS_CALLABLE_CHECK_SYNTAX_ONLY;
 	}
-	if (ZEND_NUM_ARGS() > 2) {
+	if (callable_name != NULL) {
 		retval = zend_is_callable_ex(var, NULL, check_flags, &name, NULL, NULL, &error TSRMLS_CC);
 		zval_dtor(*callable_name);
 		ZVAL_STRING(*callable_name, name, 0);

@@ -159,7 +159,7 @@ PHP_FUNCTION(ibase_wait_event)
 		}
 	}
 
-	for (; i < ZEND_NUM_ARGS(); ++i) {
+	for (; i < num_args; ++i) {
 		convert_to_string_ex(args[i]);
 		events[event_count++] = Z_STRVAL_PP(args[i]);
 	}
@@ -338,14 +338,14 @@ PHP_FUNCTION(ibase_set_event_handler)
 	event->link = ib_link;
 	event->event_count = 0;
 	event->state = NEW;
-	event->events = (char **) safe_emalloc(sizeof(char *),ZEND_NUM_ARGS()-i,0);
+	event->events = (char **) safe_emalloc(sizeof(char *),num_args-i,0);
 
 	ALLOC_ZVAL(event->callback);
 	*event->callback = **cb_arg;
 	INIT_PZVAL(event->callback);
 	zval_copy_ctor(event->callback);
 
-	for (; i < ZEND_NUM_ARGS(); ++i) {
+	for (; i < num_args; ++i) {
 		convert_to_string_ex(args[i]);
 		event->events[event->event_count++] = estrdup(Z_STRVAL_PP(args[i]));
 	}

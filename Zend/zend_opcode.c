@@ -78,9 +78,10 @@ void init_op_array(zend_op_array *op_array, zend_uchar type, int initial_ops_siz
 	op_array->doc_comment = NULL;
 	op_array->doc_comment_len = 0;
 
-	op_array->arg_info = NULL;
 	op_array->num_args = 0;
 	op_array->required_num_args = 0;
+	op_array->arg_info = NULL;
+	op_array->arg_offsets = NULL;
 
 	op_array->scope = NULL;
 
@@ -409,6 +410,10 @@ ZEND_API void destroy_op_array(zend_op_array *op_array TSRMLS_DC)
 			}
 		}
 		efree(op_array->arg_info);
+	}
+	if (op_array->arg_offsets) {
+		zend_hash_destroy(op_array->arg_offsets);
+		FREE_HASHTABLE(op_array->arg_offsets);
 	}
 }
 

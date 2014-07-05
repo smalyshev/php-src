@@ -1885,6 +1885,12 @@ static PHP_FUNCTION(session_set_save_handler)
 	if (zend_parse_parameters(argc TSRMLS_CC, "+", &args, &num_args) == FAILURE) {
 		return;
 	}
+	if(num_args != 6 && num_args != 7) {
+		if(args) {
+			efree(args);
+		}
+		WRONG_PARAM_COUNT;
+	}
 
 	/* remove shutdown function */
 	remove_user_shutdown_function("session_shutdown", sizeof("session_shutdown") TSRMLS_CC);
@@ -2029,15 +2035,14 @@ static PHP_FUNCTION(session_cache_limiter)
 static PHP_FUNCTION(session_cache_expire)
 {
 	zval **expires = NULL;
-	int argc = ZEND_NUM_ARGS();
 
-	if (zend_parse_parameters(argc TSRMLS_CC, "|Z", &expires) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "|Z", &expires) == FAILURE) {
 		return;
 	}
 
 	RETVAL_LONG(PS(cache_expire));
 
-	if (argc == 1) {
+	if (expires != NULL) {
 		convert_to_string_ex(expires);
 		zend_alter_ini_entry("session.cache_expire", sizeof("session.cache_expire"), Z_STRVAL_PP(expires), Z_STRLEN_PP(expires), ZEND_INI_USER, ZEND_INI_STAGE_RUNTIME);
 	}

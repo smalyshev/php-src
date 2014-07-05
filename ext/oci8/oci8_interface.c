@@ -12,7 +12,7 @@
    | obtain it through the world-wide-web, please send a note to          |
    | license@php.net so we can mail you a copy immediately.               |
    +----------------------------------------------------------------------+
-   | Authors: Stig Sæther Bakken <ssb@php.net>                            |
+   | Authors: Stig Sï¿½ther Bakken <ssb@php.net>                            |
    |          Thies C. Arntzen <thies@thieso.net>                         |
    |                                                                      |
    | Collection support by Andy Sautins <asautins@veripost.net>           |
@@ -141,7 +141,7 @@ PHP_FUNCTION(oci_bind_array_by_name)
 
 	PHP_OCI_ZVAL_TO_STATEMENT(z_statement, statement);
 
-	if (ZEND_NUM_ARGS() == 5 && max_item_len <= 0) {
+	if (max_item_len <= 0) {
 		max_item_len = -1;
 	}
 	
@@ -519,7 +519,7 @@ PHP_FUNCTION(oci_lob_write)
 	zval **tmp, *z_descriptor = getThis();
 	php_oci_descriptor *descriptor;
 	int data_len;
-	long write_len = 0;
+	long write_len = LONG_MAX;
 	ub4 bytes_written;
 	char *data;
 	
@@ -528,19 +528,15 @@ PHP_FUNCTION(oci_lob_write)
 			return;
 		}
 		
-		if (ZEND_NUM_ARGS() == 2) {
 			data_len = MIN(data_len, write_len);
 		}
-	}
 	else {
 		if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "Os|l", &z_descriptor, oci_lob_class_entry_ptr, &data, &data_len, &write_len) == FAILURE) {
 			return;
 		}
 
-		if (ZEND_NUM_ARGS() == 3) {
 			data_len = MIN(data_len, write_len);
 		}
-	}
 	
 	if (zend_hash_find(Z_OBJPROP_P(z_descriptor), "descriptor", sizeof("descriptor"), (void **)&tmp) == FAILURE) {
 		php_error_docref(NULL TSRMLS_CC, E_WARNING, "Unable to find descriptor property");
@@ -649,7 +645,7 @@ PHP_FUNCTION(oci_lob_erase)
 	long offset = -1, length = -1;
 	
 	if (getThis()) {
-		if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "|ll", &offset, &length) == FAILURE) {
+		if (zend_parse_parameters_ex(ZEND_PARSE_PARAMS_NODEFAULT, ZEND_NUM_ARGS() TSRMLS_CC, "|ll", &offset, &length) == FAILURE) {
 			return;
 		}
 
@@ -664,7 +660,7 @@ PHP_FUNCTION(oci_lob_erase)
 		}
 	}
 	else {
-		if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "O|ll", &z_descriptor, oci_lob_class_entry_ptr, &offset, &length) == FAILURE) {
+		if (zend_parse_parameters_ex(ZEND_PARSE_PARAMS_NODEFAULT, ZEND_NUM_ARGS() TSRMLS_CC, "O|ll", &z_descriptor, oci_lob_class_entry_ptr, &offset, &length) == FAILURE) {
 			return;
 		}
 
@@ -799,7 +795,7 @@ PHP_FUNCTION(oci_lob_copy)
 	php_oci_descriptor *descriptor_dest, *descriptor_from;
 	long length = 0;
 	
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "OO|l", &z_descriptor_dest, oci_lob_class_entry_ptr, &z_descriptor_from, oci_lob_class_entry_ptr, &length) == FAILURE) {
+	if (zend_parse_parameters_ex(ZEND_PARSE_PARAMS_NODEFAULT, ZEND_NUM_ARGS() TSRMLS_CC, "OO|l", &z_descriptor_dest, oci_lob_class_entry_ptr, &z_descriptor_from, oci_lob_class_entry_ptr, &length) == FAILURE) {
 		return;
 	}
 	
@@ -884,9 +880,9 @@ PHP_FUNCTION(oci_lob_export)
 
 	if (getThis()) {
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION > 3) || (PHP_MAJOR_VERSION > 5)
-		if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "p|ll", &filename, &filename_len, &start, &length) == FAILURE) {
+		if (zend_parse_parameters_ex(ZEND_PARSE_PARAMS_NODEFAULT, ZEND_NUM_ARGS() TSRMLS_CC, "p|ll", &filename, &filename_len, &start, &length) == FAILURE) {
 #else
-		if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s|ll", &filename, &filename_len, &start, &length) == FAILURE) {
+		if (zend_parse_parameters_ex(ZEND_PARSE_PARAMS_NODEFAULT, ZEND_NUM_ARGS() TSRMLS_CC, "s|ll", &filename, &filename_len, &start, &length) == FAILURE) {
 #endif
 			return;
 		}
@@ -902,9 +898,9 @@ PHP_FUNCTION(oci_lob_export)
 	}
 	else {
 #if (PHP_MAJOR_VERSION == 5 && PHP_MINOR_VERSION > 3) || (PHP_MAJOR_VERSION > 5)
-		if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "Op|ll", &z_descriptor, oci_lob_class_entry_ptr, &filename, &filename_len, &start, &length) == FAILURE) {
+		if (zend_parse_parameters_ex(ZEND_PARSE_PARAMS_NODEFAULT, ZEND_NUM_ARGS() TSRMLS_CC, "Op|ll", &z_descriptor, oci_lob_class_entry_ptr, &filename, &filename_len, &start, &length) == FAILURE) {
 #else
-		if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "Os|ll", &z_descriptor, oci_lob_class_entry_ptr, &filename, &filename_len, &start, &length) == FAILURE) {
+		if (zend_parse_parameters_ex(ZEND_PARSE_PARAMS_NODEFAULT, ZEND_NUM_ARGS() TSRMLS_CC, "Os|ll", &z_descriptor, oci_lob_class_entry_ptr, &filename, &filename_len, &start, &length) == FAILURE) {
 #endif
 			return;
 		}
@@ -1615,7 +1611,7 @@ PHP_FUNCTION(oci_error)
 		return;
 	}
 
-	if (ZEND_NUM_ARGS() > 0) {
+	if (arg) {
 		statement = (php_oci_statement *) zend_fetch_resource(&arg TSRMLS_CC, -1, NULL, NULL, 1, le_statement);
 		if (statement) {
 			errh = statement->err;

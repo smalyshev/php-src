@@ -580,7 +580,7 @@ optional_class_type:
 function_call_parameter_list:
 		'(' ')'	{ Z_LVAL($$.u.constant) = 0; }
 	|	'(' non_empty_function_call_parameter_list ')'	{ $$ = $2; }
-	|	'(' yield_expr ')'	{ zend_do_pass_param(&$2, ZEND_SEND_VAL TSRMLS_CC); }
+	|	'(' yield_expr ')'	{ zend_do_pass_param(&$2, ZEND_SEND_VAL, NULL TSRMLS_CC); }
 ;
 
 
@@ -590,10 +590,18 @@ non_empty_function_call_parameter_list:
 ;
 
 function_call_parameter:
-		expr_without_variable	{ zend_do_pass_param(&$1, ZEND_SEND_VAL TSRMLS_CC); }
-	|	variable				{ zend_do_pass_param(&$1, ZEND_SEND_VAR TSRMLS_CC); }
-	|	'&' w_variable 			{ zend_do_pass_param(&$2, ZEND_SEND_REF TSRMLS_CC); }
+		expr_without_variable	{ zend_do_pass_param(&$1, ZEND_SEND_VAL, NULL TSRMLS_CC); }
+	|	variable				{ zend_do_pass_param(&$1, ZEND_SEND_VAR, NULL TSRMLS_CC); }
+	|	'&' w_variable 			{ zend_do_pass_param(&$2, ZEND_SEND_REF, NULL TSRMLS_CC); }
 	|	T_ELLIPSIS expr			{ zend_do_unpack_params(&$2 TSRMLS_CC); }
+	|	named_arg T_DOUBLE_ARROW expr_without_variable	{ zend_do_pass_param(&$3, ZEND_SEND_VAL, &$1 TSRMLS_CC); }
+	|	named_arg T_DOUBLE_ARROW variable				{ zend_do_pass_param(&$3, ZEND_SEND_VAR, &$1 TSRMLS_CC); }
+	|	named_arg T_DOUBLE_ARROW '&' w_variable 		{ zend_do_pass_param(&$4, ZEND_SEND_REF, &$1 TSRMLS_CC); }
+;
+
+named_arg:
+		T_STRING					{ $$ = $1; }
+	|	T_CONSTANT_ENCAPSED_STRING	{ $$ = $1; }
 ;
 
 global_var_list:

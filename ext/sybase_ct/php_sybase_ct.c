@@ -1982,7 +1982,7 @@ PHP_FUNCTION(sybase_fetch_field)
 	long field_offset = -1;
 	sybase_result *result;
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "r|l", &sybase_result_index, &field_offset) == FAILURE) {
+	if (zend_parse_parameters_ex(ZEND_PARSE_PARAMS_NODEFAULT, ZEND_NUM_ARGS() TSRMLS_CC, "r|l", &sybase_result_index, &field_offset) == FAILURE) {
 		return;
 	}
 	ZEND_FETCH_RESOURCE(result, sybase_result *, &sybase_result_index, -1, "Sybase result", le_result);

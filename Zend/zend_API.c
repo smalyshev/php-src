@@ -97,7 +97,7 @@ ZEND_API int _zend_get_parameters_array(int ht, int param_count, zval **argument
 
 	while (param_count-->0) {
 		param_ptr = *(p-arg_count);
-		if (!PZVAL_IS_REF(param_ptr) && Z_REFCOUNT_P(param_ptr) > 1) {
+		if (param_ptr != NULL && !PZVAL_IS_REF(param_ptr) && Z_REFCOUNT_P(param_ptr) > 1) {
 			zval *new_tmp;
 
 			ALLOC_ZVAL(new_tmp);
@@ -159,6 +159,32 @@ ZEND_API int _zend_get_parameters_array_ex(int param_count, zval ***argument_arr
 	while (param_count-->0) {
 		zval **value = (zval**)(p-arg_count);
 
+		*(argument_array++) = value;
+		arg_count--;
+	}
+
+	return SUCCESS;
+}
+/* }}} */
+
+ZEND_API int zend_get_parameters_array_nodefault(int param_count, zval ***argument_array TSRMLS_DC) /* {{{ */
+{
+	void **p;
+	int arg_count;
+
+	p = zend_vm_stack_top(TSRMLS_C) - 1;
+	arg_count = (int)(zend_uintptr_t) *p;
+
+	if (param_count>arg_count) {
+		return FAILURE;
+	}
+
+	while (param_count-->0) {
+		zval **value = (zval**)(p-arg_count);
+		if(*value == NULL) {
+			// defaults not allowed
+			return FAILURE;
+		}
 		*(argument_array++) = value;
 		arg_count--;
 	}
@@ -301,6 +327,112 @@ static int parse_arg_object_to_string(zval **arg, char **p, int *pl, int type TS
 	return FAILURE;
 }
 /* }}} */
+
+static void zend_parse_arg_skip(va_list *va, const char **spec TSRMLS_DC) /* {{{ */
+{
+	/* Just a first idea of how argument skipping should work. In this implementation I'm not
+	 * touching values at all, unless check_null is specified, in which case I do the appropriate
+	 * logic. This likely is not the optimal approach, because code may rely on values being set
+	 * if later values are set. */
+	const char *spec_walk = *spec;
+	char c = *spec_walk++;
+	zend_bool check_null = 0;
+
+	if (*spec_walk == '!') {
+		check_null = 1;
+		spec_walk++;
+	}
+
+	switch (c) {
+		case 'l':
+		case 'L': {
+			va_arg(*va, long *);
+			if (check_null) {
+				zend_bool *p = va_arg(*va, zend_bool *);
+				*p = 1;
+			}
+			break;
+		}
+		case 'd': {
+			va_arg(*va, double *);
+			if (check_null) {
+				zend_bool *p = va_arg(*va, zend_bool *);
+				*p = 1;
+			}
+			break;
+		}
+		case 'p':
+		case 's': {
+			char **p = va_arg(*va, char **);
+			int *pl = va_arg(*va, int *);
+			if (check_null) {
+				*p = NULL;
+				*pl = 0;
+			}
+			break;
+		}
+		case 'b': {
+			va_arg(*va, zend_bool *);
+			if (check_null) {
+				zend_bool *p = va_arg(*va, zend_bool *);
+				*p = 1;
+			}
+			break;
+		}
+		case 'r':
+		case 'A':
+		case 'a':
+		case 'o':
+		case 'z': {
+			zval **p = va_arg(*va, zval **);
+			if (check_null) {
+				*p = NULL;
+			}
+			break;
+		}
+		case 'H':
+		case 'h': {
+			HashTable **p = va_arg(*va, HashTable **);
+			if (check_null) {
+				*p = NULL;
+			}
+			break;
+		}
+		case 'O': {
+			zval **p = va_arg(*va, zval **);
+			va_arg(*va, zend_class_entry *);
+			if (check_null) {
+				*p = NULL;
+			}
+			break;
+		}
+		case 'C': {
+			zend_class_entry **p = va_arg(*va, zend_class_entry **);
+			if (check_null) {
+				*p = NULL;
+			}
+			break;
+		}
+		case 'f': {
+			zend_fcall_info *fci = va_arg(*va, zend_fcall_info *);
+			zend_fcall_info_cache *fcc = va_arg(*va, zend_fcall_info_cache *);
+			if (check_null) {
+				fci->size = 0;
+				fcc->initialized = 0;
+			}
+			break;
+		}
+		case 'Z': {
+			zval ***p = va_arg(*va, zval ***);
+			if (check_null) {
+				*p = NULL;
+			}
+			break;
+		}
+	}
+
+	*spec = spec_walk;
+}
 
 static const char *zend_parse_arg_impl(int arg_num, zval **arg, va_list *va, const char **spec, char **error, int *severity TSRMLS_DC) /* {{{ */
 {
@@ -739,6 +871,7 @@ static int zend_parse_va_args(int num_args, const char *type_spec, va_list *va, 
 	zend_bool have_varargs = 0;
 	zval ****varargs = NULL;
 	int *n_varargs = NULL;
+	int disallow_default = flags & ZEND_PARSE_PARAMS_NODEFAULT;
 
 	for (spec_walk = type_spec; *spec_walk; spec_walk++) {
 		c = *spec_walk;
@@ -834,6 +967,8 @@ static int zend_parse_va_args(int num_args, const char *type_spec, va_list *va, 
 
 	i = 0;
 	while (num_args-- > 0) {
+		int parse_failed;
+
 		if (*type_spec == '|') {
 			type_spec++;
 		}
@@ -850,17 +985,40 @@ static int zend_parse_va_args(int num_args, const char *type_spec, va_list *va, 
 				int iv = 0;
 				zval **p = (zval **) (zend_vm_stack_top(TSRMLS_C) - 1 - (arg_count - i));
 
-				*n_varargs = num_varargs;
+				num_args -= num_varargs-1; /* adjust how many args we've left after varargs, -1 because we already subtracted 1 above */
+				i += num_varargs; /* put loop counter after varargs */
 
 				/* allocate space for array and store args */
 				*varargs = safe_emalloc(num_varargs, sizeof(zval **), 0);
-				while (num_varargs-- > 0) {
-					(*varargs)[iv++] = p++;
+				for (;num_varargs-- > 0;p++) {
+					if(*p == NULL) {
+						/* skipped arg - not counting in varargs */
+						continue;
+					}
+					(*varargs)[iv++] = p;
+				}
+				if(iv == 0) {
+					efree(*varargs);
+					*varargs = NULL;
+
+					if(type_spec[-1] == '+') {
+						if (!quiet) {
+							zend_function *active_function = EG(current_execute_data)->function_state.function;
+							const char *class_name = active_function->common.scope ? active_function->common.scope->name : "";
+							zend_error(E_WARNING, "%s%s%s() expects %s %d parameter%s, %d given",
+									class_name,
+									class_name[0] ? "::" : "",
+									active_function->common.function_name,
+									min_num_args == max_num_args ? "exactly" : num_args < min_num_args ? "at least" : "at most",
+									num_args < min_num_args ? min_num_args : max_num_args,
+									(num_args < min_num_args ? min_num_args : max_num_args) == 1 ? "" : "s",
+									num_args);
+						}
+						return FAILURE;
+					}
 				}
 
-				/* adjust how many args we have left and restart loop */
-				num_args = num_args + 1 - iv;
-				i += iv;
+				*n_varargs = iv;
 				continue;
 			} else {
 				*varargs = NULL;
@@ -870,7 +1028,29 @@ static int zend_parse_va_args(int num_args, const char *type_spec, va_list *va, 
 
 		arg = (zval **) (zend_vm_stack_top(TSRMLS_C) - 1 - (arg_count-i));
 
-		if (zend_parse_arg(i+1, arg, va, &type_spec, quiet TSRMLS_CC) == FAILURE) {
+		parse_failed = 0;
+		if (*arg == NULL) {
+			/* we have skipped arg */
+			if (i < min_num_args || disallow_default || type_spec[1] == '/') {
+				/* this is one of the required args or skipping is prohibited or we'd need to write there */
+				if (!quiet) {
+					zend_function *active_function = EG(current_execute_data)->function_state.function;
+					const char *class_name = active_function->common.scope ? active_function->common.scope->name : "";
+					zend_error(E_WARNING, "Parameter %d missing for %s%s%s()",
+							i+1,
+							class_name,
+							class_name[0] ? "::" : "",
+							active_function->common.function_name);
+				}
+				parse_failed = 1;
+			} else {
+				i++;
+				zend_parse_arg_skip(va, &type_spec TSRMLS_CC);
+				continue;
+			}
+		}
+
+		if (parse_failed || zend_parse_arg(i+1, arg, va, &type_spec, quiet TSRMLS_CC) == FAILURE) {
 			/* clean up varargs array if it was used */
 			if (varargs && *varargs) {
 				efree(*varargs);
@@ -2069,6 +2249,7 @@ ZEND_API int zend_register_functions(zend_class_entry *scope, const zend_functio
 		internal_function->function_name = (char*)ptr->fname;
 		internal_function->scope = scope;
 		internal_function->prototype = NULL;
+		internal_function->arg_offsets = NULL;
 		if (ptr->flags) {
 			if (!(ptr->flags & ZEND_ACC_PPP_MASK)) {
 				if (ptr->flags != ZEND_ACC_DEPRECATED || scope) {
@@ -2886,6 +3067,7 @@ get_function_via_handler:
 				fcc->function_handler->internal_function.module = (ce_org->type == ZEND_INTERNAL_CLASS) ? ce_org->info.internal.module : NULL;
 				fcc->function_handler->internal_function.handler = zend_std_call_user_call;
 				fcc->function_handler->internal_function.arg_info = NULL;
+				fcc->function_handler->internal_function.arg_offsets = NULL;
 				fcc->function_handler->internal_function.num_args = 0;
 				fcc->function_handler->internal_function.scope = ce_org;
 				fcc->function_handler->internal_function.fn_flags = ZEND_ACC_CALL_VIA_HANDLER;
@@ -4048,6 +4230,34 @@ ZEND_API const char* zend_resolve_method_name(zend_class_entry *ce, zend_functio
 		zend_hash_move_forward_ex(function_table, &iterator);
 	}
 	return f->common.function_name;
+}
+/* }}} */
+
+ZEND_API int zend_get_arg_num(zend_uint *arg_num_target, zend_function *fn, char *name, int name_len, zend_ulong hash_value TSRMLS_DC) /* {{{ */
+{
+	HashTable *arg_offsets = fn->common.arg_offsets;
+	if (arg_offsets == NULL) {
+		zend_arg_info *arg_info = fn->common.arg_info;
+		zend_uint i, num_args = fn->common.num_args;
+
+		arg_offsets = pemalloc(sizeof(HashTable), fn->type != ZEND_USER_FUNCTION);
+		zend_hash_init(arg_offsets, num_args, NULL, NULL, fn->type != ZEND_USER_FUNCTION);
+		for (i = 0; i < num_args; ++i) {
+			zend_hash_update(arg_offsets, arg_info[i].name, arg_info[i].name_len + 1, &i, sizeof(zend_uint), NULL);
+		}
+
+		fn->common.arg_offsets = arg_offsets;
+	}
+
+	{
+		zend_uint *arg_num;
+		if (zend_hash_find(arg_offsets, name, name_len + 1, (void **) &arg_num) == SUCCESS) {
+			*arg_num_target = *arg_num + 1;
+			return SUCCESS;
+		} else {
+			return FAILURE;
+		}
+	}
 }
 /* }}} */
 

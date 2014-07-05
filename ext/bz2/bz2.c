@@ -486,17 +486,14 @@ static PHP_FUNCTION(bzerror)
 static PHP_FUNCTION(bzcompress)
 {
 	char             *source;          /* Source data to compress */
-	long              zblock_size = 0; /* Optional block size to use */
+	long              zblock_size = 4; /* Optional block size to use */
 	long              zwork_factor = 0;/* Optional work factor to use */
 	char             *dest = NULL;     /* Destination to place the compressed data into */
 	int               error,           /* Error Container */
 					  block_size  = 4, /* Block size for compression algorithm */
-					  work_factor = 0, /* Work factor for compression algorithm */
-					  argc;            /* Argument count */
+					  work_factor = 0; /* Work factor for compression algorithm */
 	int               source_len;      /* Length of the source data */
 	unsigned int      dest_len;        /* Length of the destination buffer */ 
-
-	argc = ZEND_NUM_ARGS();
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s|ll", &source, &source_len, &zblock_size, &zwork_factor) == FAILURE) {
 		return;
@@ -512,13 +509,8 @@ static PHP_FUNCTION(bzcompress)
 	dest = emalloc(dest_len + 1);
 	
 	/* Handle the optional arguments */
-	if (argc > 1) {
 		block_size = zblock_size;
-	}
-	
-	if (argc > 2) {
 		work_factor = zwork_factor;
-	}
 
 	error = BZ2_bzBuffToBuffCompress(dest, &dest_len, source, source_len, block_size, 0, work_factor);
 	if (error != BZ_OK) {

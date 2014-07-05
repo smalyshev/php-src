@@ -1646,14 +1646,23 @@ static zend_always_inline zend_execute_data *i_create_execute_data_from_op_array
 		/* copy arguments */
 		*EX(prev_execute_data)->function_state.arguments = (void*)(zend_uintptr_t)args_count;
 		if (args_count > 0) {
-			zval **arg_src = (zval**)zend_vm_stack_get_arg_ex(EG(current_execute_data), 1);
-			zval **arg_dst = (zval**)zend_vm_stack_get_arg_ex(EX(prev_execute_data), 1);
+			zval **arg_src = zend_vm_stack_get_args(EG(current_execute_data));
+			zval **arg_dst = zend_vm_stack_get_args(EX(prev_execute_data));
 			int i;
 
 			for (i = 0; i < args_count; i++) {
 				arg_dst[i] = arg_src[i];
 				Z_ADDREF_P(arg_dst[i]);
 			}
+		}
+
+		if (EG(current_execute_data)->function_state.additional_named_args) {
+			ALLOC_HASHTABLE(EX(prev_execute_data)->function_state.additional_named_args);
+			zend_hash_copy(
+				EX(prev_execute_data)->function_state.additional_named_args,
+				EG(current_execute_data)->function_state.additional_named_args,
+				(copy_ctor_func_t) zval_add_ref, NULL, sizeof(zval *)
+			);
 		}
 	} else {
 		execute_data = zend_vm_stack_alloc(total_size TSRMLS_CC);
@@ -1700,6 +1709,7 @@ static zend_always_inline zend_execute_data *i_create_execute_data_from_op_array
 
 	EX(function_state).function = (zend_function *) op_array;
 	EX(function_state).arguments = NULL;
+	EX(function_state).additional_named_args = NULL;
 
 	return execute_data;
 }
@@ -1708,13 +1718,6 @@ static zend_always_inline zend_execute_data *i_create_execute_data_from_op_array
 ZEND_API zend_execute_data *zend_create_execute_data_from_op_array(zend_op_array *op_array, zend_bool nested TSRMLS_DC) /* {{{ */
 {
 	return i_create_execute_data_from_op_array(op_array, nested TSRMLS_CC);
-}
-/* }}} */
-
-static zend_always_inline zend_bool zend_is_by_ref_func_arg_fetch(zend_op *opline, call_slot *call TSRMLS_DC) /* {{{ */
-{
-	zend_uint arg_num = opline->extended_value & ZEND_FETCH_ARG_MASK;
-	return ARG_SHOULD_BE_SENT_BY_REF(call->fbc, arg_num);
 }
 /* }}} */
 
@@ -1753,6 +1756,104 @@ static zend_always_inline void** zend_vm_stack_push_args(int count TSRMLS_DC) /*
 }
 /* }}} */
 
+zend_always_inline void zend_init_call_slot(call_slot *call TSRMLS_DC) /* {{{ */
+{
+	call->num_additional_args = 0;
+	call->additional_named_args = NULL;
+	call->uses_named_args = 0;
+}
+/* }}} */
+
+zend_always_inline void zend_check_for_overwritten_parameter(zend_function *fbc, zend_uint arg_num, void **target TSRMLS_DC) /* {{{ */
+{
+	if (*target != NULL) {
+		zval_ptr_dtor((zval **) target);
+		zend_error(
+			E_WARNING, "Overwriting already passed parameter %d ($%s)",
+			arg_num, fbc->common.arg_info[arg_num - 1].name
+		);
+	}
+}
+/* }}} */
+
+void **zend_handle_named_arg(zend_uint *arg_num_target, call_slot *call, char *name, int name_len, const zend_literal *key, zend_uint orig_arg_num TSRMLS_DC) /* {{{ */
+{
+	void **target;
+	zend_uint arg_num;
+	int relative_arg_num;
+
+	call->uses_named_args = 1;
+	if (!key || !(arg_num = (zend_uint) (zend_uintptr_t) CACHED_POLYMORPHIC_PTR(key->cache_slot, call->fbc))) {
+		zend_ulong hash_value = key ? key->hash_value : zend_inline_hash_func(name, name_len+1);
+		if (zend_get_arg_num(&arg_num, call->fbc, name, name_len, hash_value TSRMLS_CC) == FAILURE) {
+			if (call->fbc->common.fn_flags & ZEND_ACC_VARIADIC) {
+				if (!call->additional_named_args) {
+					ALLOC_HASHTABLE(call->additional_named_args);
+					zend_hash_init(call->additional_named_args, 0, NULL, ZVAL_PTR_DTOR, 0);
+				}
+
+				if (zend_hash_quick_find(call->additional_named_args, name, name_len+1, hash_value, (void **) &target) == SUCCESS) {
+					zval_ptr_dtor((zval **) target);
+					zend_error(E_WARNING, "Overwriting already passed parameter $%s", name);
+				} else {
+					void *dummy = NULL;
+					zend_hash_quick_update(call->additional_named_args, name, name_len+1, hash_value, &dummy, sizeof(zval *), (void **) &target);
+				}
+
+				*arg_num_target = call->fbc->common.num_args;
+				return target;
+			} else {
+				zend_error_noreturn(E_ERROR, "Unknown named argument $%s", name);
+			}
+		} else if (key) {
+			CACHE_POLYMORPHIC_PTR(key->cache_slot, call->fbc, (void *) (zend_uintptr_t) arg_num);
+		}
+	}
+
+	*arg_num_target = arg_num;
+	relative_arg_num = arg_num - orig_arg_num - call->num_additional_args - 1;
+
+	target = EG(argument_stack)->top + relative_arg_num;
+	if (relative_arg_num < 0) {
+		zend_check_for_overwritten_parameter(call->fbc, arg_num, target TSRMLS_CC);
+	} else if (relative_arg_num > 0) {
+		ZEND_VM_STACK_GROW_IF_NEEDED(relative_arg_num);
+		memset(EG(argument_stack)->top, 0, relative_arg_num * sizeof(void *));
+		EG(argument_stack)->top += relative_arg_num + 1;
+		call->num_additional_args += relative_arg_num + 1;
+	} else {
+		EG(argument_stack)->top++;
+		call->num_additional_args++;
+	}
+
+	return target;
+}
+/* }}} */
+
+zend_always_inline zend_bool zend_is_by_ref_func_arg_fetch(zend_op *opline, call_slot *call TSRMLS_DC) /* {{{ */
+{
+	zend_uint arg_num;
+
+	if (opline->extended_value & ZEND_FETCH_NAMED) {
+		/* This is likely not the right way to do it... */
+		zend_op *send_op = opline + 1;
+		while (send_op->opcode != ZEND_SEND_VAR) {
+			send_op++;
+		}
+
+		if (zend_get_arg_num(&arg_num, call->fbc, Z_STRVAL_P(send_op->op2.zv), Z_STRLEN_P(send_op->op2.zv), Z_HASH_P(send_op->op2.zv) TSRMLS_CC) == SUCCESS) {
+			return ARG_SHOULD_BE_SENT_BY_REF(call->fbc, arg_num);
+		} else if (call->fbc->common.fn_flags & ZEND_ACC_VARIADIC) {
+			return ARG_SHOULD_BE_SENT_BY_REF(call->fbc, call->fbc->common.num_args);
+		} else {
+			return 0;
+		}
+	} else {
+ 		arg_num = (opline->extended_value & ZEND_FETCH_ARG_MASK) + call->num_additional_args;
+		return ARG_SHOULD_BE_SENT_BY_REF(call->fbc, arg_num);
+	}
+}
+/* }}} */
 
 #define ZEND_VM_NEXT_OPCODE() \
 	CHECK_SYMBOL_TABLES() \

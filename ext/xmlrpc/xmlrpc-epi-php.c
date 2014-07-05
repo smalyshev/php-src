@@ -1098,17 +1098,12 @@ PHP_FUNCTION(xmlrpc_server_call_method)
 	char *rawxml;
 	int rawxml_len, type;
 	php_output_options out;
-	int argc =ZEND_NUM_ARGS();
 	
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "rsZ|a", &handle, &rawxml, &rawxml_len, &caller_params, &output_opts) != SUCCESS) {
 		return;
 	}
-	/* user output options */
-	if (argc == 3) {
-		set_output_options(&out, NULL);
-	} else {
+	/* user output options, will set to NULL if omitted */
 		set_output_options(&out, output_opts);
-	}
 
 	server = zend_list_find(Z_LVAL_P(handle), &type);
 

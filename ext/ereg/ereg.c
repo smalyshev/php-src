@@ -14,7 +14,7 @@
    +----------------------------------------------------------------------+
    | Authors: Rasmus Lerdorf <rasmus@php.net>                             |
    |          Jim Winstead <jimw@php.net>                                 |
-   |          Jaakko Hyvätti <jaakko@hyvatti.iki.fi>                      | 
+   |          Jaakko Hyvï¿½tti <jaakko@hyvatti.iki.fi>                      |
    +----------------------------------------------------------------------+
  */
 /* $Id$ */
@@ -300,9 +300,8 @@ static void php_ereg(INTERNAL_FUNCTION_PARAMETERS, int icase)
 	off_t start, end;
 	char *buf = NULL;
 	char *string = NULL;
-	int   argc = ZEND_NUM_ARGS();
 
-	if (zend_parse_parameters(argc TSRMLS_CC, "Zs|Z", &regex, &findin, &findin_len, &array) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "Zs|Z", &regex, &findin, &findin_len, &array) == FAILURE) {
 		return;
 	}
 
@@ -310,7 +309,7 @@ static void php_ereg(INTERNAL_FUNCTION_PARAMETERS, int icase)
 		copts |= REG_ICASE;
 	}
 	
-	if (argc == 2) {
+	if (array == NULL) {
 		copts |= REG_NOSUB;
 	}
 
@@ -455,7 +454,7 @@ PHP_EREG_API char *php_ereg_replace(const char *pattern, const char *replace, co
 			   1) find out how long the string will be, and allocate buf
 			   2) copy the part before match, replacement and backrefs to buf
 
-			   Jaakko Hyvätti <Jaakko.Hyvatti@iki.fi>
+			   Jaakko Hyvï¿½tti <Jaakko.Hyvatti@iki.fi>
 			   */
 
 			new_l = strlen(buf) + subs[0].rm_so; /* part before the match */

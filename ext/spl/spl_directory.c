@@ -2584,36 +2584,35 @@ SPL_METHOD(SplFileObject, fgetcsv)
 	char *delim = NULL, *enclo = NULL, *esc = NULL;
 	int d_len = 0, e_len = 0, esc_len = 0;
 	
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "|sss", &delim, &d_len, &enclo, &e_len, &esc, &esc_len) == SUCCESS) {
-		switch(ZEND_NUM_ARGS())
-		{
-		case 3:
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "|sss", &delim, &d_len, &enclo, &e_len, &esc, &esc_len) == FAILURE) {
+		return;
+	}
+
+	if(esc) {
 			if (esc_len != 1) {
 				php_error_docref(NULL TSRMLS_CC, E_WARNING, "escape must be a character");
 				RETURN_FALSE;
 			}
 			escape = esc[0];
-			/* no break */
-		case 2:
+	}
+
+	if(enclo) {
 			if (e_len != 1) {
 				php_error_docref(NULL TSRMLS_CC, E_WARNING, "enclosure must be a character");
 				RETURN_FALSE;
 			}
 			enclosure = enclo[0];
-			/* no break */
-		case 1:
+	}
+
+	if(delim) {
 			if (d_len != 1) {
 				php_error_docref(NULL TSRMLS_CC, E_WARNING, "delimiter must be a character");
 				RETURN_FALSE;
 			}
 			delimiter = delim[0];
-			/* no break */
-		case 0:
-			break;
 		}
 		spl_filesystem_file_read_csv(intern, delimiter, enclosure, escape, return_value TSRMLS_CC);
 	}
-}
 /* }}} */
 
 /* {{{ proto int SplFileObject::fputcsv(array fields, [string delimiter [, string enclosure]])
@@ -2626,31 +2625,28 @@ SPL_METHOD(SplFileObject, fputcsv)
 	int d_len = 0, e_len = 0, ret;
 	zval *fields = NULL;
 	
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "a|ss", &fields, &delim, &d_len, &enclo, &e_len) == SUCCESS) {
-		switch(ZEND_NUM_ARGS())
-		{
-		case 3:
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "a|ss", &fields, &delim, &d_len, &enclo, &e_len) == FAILURE) {
+		return;
+	}
+
+	if(enclo) {
 			if (e_len != 1) {
 				php_error_docref(NULL TSRMLS_CC, E_WARNING, "enclosure must be a character");
 				RETURN_FALSE;
 			}
 			enclosure = enclo[0];
-			/* no break */
-		case 2:
+	}
+
+	if(delim) {
 			if (d_len != 1) {
 				php_error_docref(NULL TSRMLS_CC, E_WARNING, "delimiter must be a character");
 				RETURN_FALSE;
 			}
 			delimiter = delim[0];
-			/* no break */
-		case 1:
-		case 0:
-			break;
 		}
 		ret = php_fputcsv(intern->u.file.stream, fields, delimiter, enclosure, escape TSRMLS_CC);
 		RETURN_LONG(ret);
 	}
-}
 /* }}} */
 
 /* {{{ proto void SplFileObject::setCsvControl([string delimiter = ',' [, string enclosure = '"' [, string escape = '\\']]])
@@ -2662,38 +2658,37 @@ SPL_METHOD(SplFileObject, setCsvControl)
 	char *delim = NULL, *enclo = NULL, *esc = NULL;
 	int d_len = 0, e_len = 0, esc_len = 0;
 	
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "|sss", &delim, &d_len, &enclo, &e_len, &esc, &esc_len) == SUCCESS) {
-		switch(ZEND_NUM_ARGS())
-		{
-		case 3:
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "|sss", &delim, &d_len, &enclo, &e_len, &esc, &esc_len) == FAILURE) {
+		return;
+	}
+	if(esc) {
 			if (esc_len != 1) {
 				php_error_docref(NULL TSRMLS_CC, E_WARNING, "escape must be a character");
 				RETURN_FALSE;
 			}
 			escape = esc[0];
-			/* no break */
-		case 2:
+	}
+
+	if(enclo) {
 			if (e_len != 1) {
 				php_error_docref(NULL TSRMLS_CC, E_WARNING, "enclosure must be a character");
 				RETURN_FALSE;
 			}
 			enclosure = enclo[0];
-			/* no break */
-		case 1:
+	}
+
+	if(delim) {
 			if (d_len != 1) {
 				php_error_docref(NULL TSRMLS_CC, E_WARNING, "delimiter must be a character");
 				RETURN_FALSE;
 			}
 			delimiter = delim[0];
-			/* no break */
-		case 0:
-			break;
 		}
+
 		intern->u.file.delimiter = delimiter;
 		intern->u.file.enclosure = enclosure;
 		intern->u.file.escape    = escape;
 	}
-}
 /* }}} */
 
 /* {{{ proto array SplFileObject::getCsvControl()
@@ -2834,20 +2829,23 @@ SPL_METHOD(SplFileObject, fwrite)
 	spl_filesystem_object *intern = (spl_filesystem_object*)zend_object_store_get_object(getThis() TSRMLS_CC);
 	char *str;
 	int str_len;
-	long length = 0;
+	long length = LONG_MAX;
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s|l", &str, &str_len, &length) == FAILURE) {
 		return;
 	}
 
-	if (ZEND_NUM_ARGS() > 1) {
-		str_len = MAX(0, MIN(length, str_len));
+	if(length > str_len) {
+		length = str_len;
 	}
-	if (!str_len) {
+	if(length < 0) {
+		length = 0;
+	}
+	if (!length) {
 		RETURN_LONG(0);
 	}
 
-	RETURN_LONG(php_stream_write(intern->u.file.stream, str, str_len));
+	RETURN_LONG(php_stream_write(intern->u.file.stream, str, length));
 } /* }}} */
 
 SPL_METHOD(SplFileObject, fread)

@@ -305,6 +305,7 @@ static zend_always_inline void zend_vm_stack_clear_multiple(int nested TSRMLS_DC
 	while (p != end) {
 		zval *q = (zval *) *(--p);
 		*p = NULL;
+		if (UNEXPECTED(q == NULL)) continue;
 		i_zval_ptr_dtor(q ZEND_FILE_LINE_CC TSRMLS_CC);
 	}
 	if (nested) {
@@ -326,14 +327,29 @@ static zend_always_inline int zend_vm_stack_get_args_count_ex(zend_execute_data 
 
 static zend_always_inline zval** zend_vm_stack_get_arg_ex(zend_execute_data *ex, int requested_arg)
 {
-	void **p = ex->function_state.arguments;
+	void **p = ex->function_state.arguments, **arg;
 	int arg_count = (int)(zend_uintptr_t) *p;
 
 	if (UNEXPECTED(requested_arg > arg_count)) {
 		return NULL;
 	}
-	return (zval**)p - arg_count + requested_arg - 1;
+
+	arg = p - arg_count + requested_arg - 1;
+	if (UNEXPECTED(*arg == NULL)) {
+		return NULL;
+	}
+
+	return (zval **) arg;
 }
+
+static zend_always_inline zval** zend_vm_stack_get_args(zend_execute_data *ex)
+{
+	void **p = ex->function_state.arguments;
+	int arg_count = (int)(zend_uintptr_t) *p;
+
+	return (zval**)p - arg_count;
+}
+
 
 static zend_always_inline int zend_vm_stack_get_args_count(TSRMLS_D)
 {

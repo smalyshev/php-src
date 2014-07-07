@@ -240,6 +240,7 @@ ZEND_API int zend_get_parameters(int ht, int param_count, ...);
 ZEND_API int _zend_get_parameters_array(int ht, int param_count, zval **argument_array TSRMLS_DC);
 ZEND_API ZEND_ATTRIBUTE_DEPRECATED int zend_get_parameters_ex(int param_count, ...);
 ZEND_API int _zend_get_parameters_array_ex(int param_count, zval ***argument_array TSRMLS_DC);
+ZEND_API int zend_get_parameters_array_nodefault(int param_count, zval ***argument_array TSRMLS_DC);
 
 /* internal function to efficiently copy parameters when executing __call() */
 ZEND_API int zend_copy_parameters_array(int param_count, zval *argument_array TSRMLS_DC);
@@ -254,6 +255,7 @@ ZEND_API int zend_copy_parameters_array(int param_count, zval *argument_array TS
 /* Parameter parsing API -- andrei */
 
 #define ZEND_PARSE_PARAMS_QUIET 1<<1
+#define ZEND_PARSE_PARAMS_NODEFAULT 1<<2
 ZEND_API int zend_parse_parameters(int num_args TSRMLS_DC, const char *type_spec, ...);
 ZEND_API int zend_parse_parameters_ex(int flags, int num_args TSRMLS_DC, const char *type_spec, ...);
 ZEND_API char *zend_zval_type_name(const zval *arg);
@@ -526,6 +528,7 @@ ZEND_API void zend_rebuild_symbol_table(TSRMLS_D);
 
 ZEND_API const char* zend_find_alias_name(zend_class_entry *ce, const char *name, zend_uint len);
 ZEND_API const char* zend_resolve_method_name(zend_class_entry *ce, zend_function *f);
+ZEND_API int zend_get_arg_num(zend_uint *arg_num_target, zend_function *fn, char *name, int name_len, zend_ulong hash_value TSRMLS_DC);
 
 #define add_method(arg, key, method)	add_assoc_function((arg), (key), (method))
 

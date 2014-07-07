@@ -1372,9 +1372,8 @@ PHP_FUNCTION(stream_set_timeout)
 	long seconds, microseconds = 0;
 	struct timeval t;
 	php_stream *stream;
-	int argc = ZEND_NUM_ARGS();
 
-	if (zend_parse_parameters(argc TSRMLS_CC, "rl|l", &socket, &seconds, &microseconds) == FAILURE) {
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "rl|l", &socket, &seconds, &microseconds) == FAILURE) {
 		return;
 	}
 
@@ -1382,7 +1381,7 @@ PHP_FUNCTION(stream_set_timeout)
 
 	t.tv_sec = seconds;
 
-	if (argc == 3) {
+	if (microseconds != 0) {
 		t.tv_usec = microseconds % 1000000;
 		t.tv_sec += microseconds / 1000000;
 	} else {
@@ -1494,7 +1493,7 @@ PHP_FUNCTION(stream_set_read_buffer)
    Enable or disable a specific kind of crypto on the stream */
 PHP_FUNCTION(stream_socket_enable_crypto)
 {
-	long cryptokind = 0;
+	long cryptokind = -1;
 	zval *zstream, *zsessstream = NULL;
 	php_stream *stream, *sessstream = NULL;
 	zend_bool enable, cryptokindnull;

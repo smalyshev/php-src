@@ -49,19 +49,15 @@ grapheme_close_global_iterator( TSRMLS_D )
 /* }}} */
 
 /* {{{ grapheme_substr_ascii f='from' - starting point, l='length' */
-void grapheme_substr_ascii(char *str, int str_len, int f, int l, int argc, char **sub_str, int *sub_str_len)
+void grapheme_substr_ascii(char *str, int32_t str_len, int32_t f, int32_t l, char **sub_str, int *sub_str_len)
 {
     *sub_str = NULL;
 
-    if (argc > 2) {
         if ((l < 0 && -l > str_len)) {
             return;
         } else if (l > str_len) {
             l = str_len;
         }
-    } else {
-        l = str_len;
-    }
 
     if (f > str_len || (f < 0 && -f > str_len)) {
         return;

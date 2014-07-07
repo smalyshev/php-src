@@ -1564,8 +1564,15 @@ PHP_METHOD(SoapServer, handle)
 		php_error_docref(NULL TSRMLS_CC, E_ERROR,"ob_start failed");
 	}
 
+<<<<<<< HEAD
 	if (ZEND_NUM_ARGS() == 0) {
 		if (SG(request_info).request_body && 0 == php_stream_rewind(SG(request_info).request_body)) {
+=======
+	if (arg == NULL) {
+		if (SG(request_info).raw_post_data) {
+			char *post_data = SG(request_info).raw_post_data;
+			int post_data_length = SG(request_info).raw_post_data_length;
+>>>>>>> Cherry pick 7682dfc by stas
 			zval **server_vars, **encoding;
 			php_stream_filter *zf = NULL;
 

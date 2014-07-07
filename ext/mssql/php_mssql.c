@@ -551,7 +551,7 @@ static void php_mssql_do_connect(INTERNAL_FUNCTION_PARAMETERS, int persistent)
 	mssql_link mssql, *mssql_ptr;
 	char buffer[40];
 
-	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "|sssb", &host, &host_len, &user, &user_len, &passwd, &passwd_len, &new_link) == FAILURE) {
+	if (zend_parse_parameters_ex(ZEND_PARSE_PARAMS_NODEFAULT, ZEND_NUM_ARGS() TSRMLS_CC, "|sssb", &host, &host_len, &user, &user_len, &passwd, &passwd_len, &new_link) == FAILURE) {
 		return;
 	}
 
@@ -1326,27 +1326,22 @@ PHP_FUNCTION(mssql_query)
 	char *query;
 	zval *mssql_link_index = NULL;
 	int query_len, retvalue, batchsize, num_fields;
-	long zbatchsize = 0;
+	long zbatchsize = MS_SQL_G(batchsize);
 	mssql_link *mssql_ptr;
 	mssql_result *result;
 	int id = -1;
 
 	dbsettime(MS_SQL_G(timeout));
-	batchsize = MS_SQL_G(batchsize);
 
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s|rl", &query, &query_len, &mssql_link_index, &zbatchsize) == FAILURE) {
 		return;
 	}
 
-	switch(ZEND_NUM_ARGS()) {
-		case 1:
+	if(mssql_link_index == NULL) {
 			id = php_mssql_get_default_link(INTERNAL_FUNCTION_PARAM_PASSTHRU);
 			CHECK_LINK(id);
-			break;
-		case 3:
-			batchsize = (int) zbatchsize;
-			break;
 	}
+	batchsize = (int) zbatchsize;
 
 	ZEND_FETCH_RESOURCE2(mssql_ptr, mssql_link *, &mssql_link_index, id, "MS SQL-Link", le_link, le_plink);
 	
@@ -2025,7 +2020,7 @@ PHP_FUNCTION(mssql_bind)
 		return;
 	}
 
-	if (ZEND_NUM_ARGS() == 7 && !is_output) {
+	if (!is_output) {
 		maxlen = -1;
 	}
 	

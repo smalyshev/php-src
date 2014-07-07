@@ -1167,8 +1167,15 @@ PHP_FUNCTION(ibase_query)
 				break;
 			}
 		} else if (bind_n > 0) {		
-			if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "+", &bind_args, &bind_num) == FAILURE) {
+			if (zend_parse_parameters_ex(ZEND_NUM_ARGS() TSRMLS_CC, "+", &bind_args, &bind_num) == FAILURE) {
 				return;
+			}
+			if(bind_num != expected_n) {
+				php_error_docref(NULL TSRMLS_CC, (bind_num < expected_n) ? E_WARNING : E_NOTICE,
+					"Statement expects %d arguments, %d given", expected_n, bind_num);
+				if (bind_num < expected_n) {
+					break;
+				}
 			}
 		}
 	

@@ -262,7 +262,6 @@ static PHP_FUNCTION(pspell_new)
 	char *language, *spelling = NULL, *jargon = NULL, *encoding = NULL;
 	int language_len, spelling_len = 0, jargon_len = 0, encoding_len = 0;
 	long mode = 0L,  speed = 0L;
-	int argc = ZEND_NUM_ARGS();
 	int ind;
 
 #ifdef PHP_WIN32
@@ -277,7 +276,7 @@ static PHP_FUNCTION(pspell_new)
 	PspellManager *manager;
 	PspellConfig *config;
 	
-	if (zend_parse_parameters(argc TSRMLS_CC, "s|sssl", &language, &language_len, &spelling, &spelling_len,
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "s|sssl", &language, &language_len, &spelling, &spelling_len,
 		&jargon, &jargon_len, &encoding, &encoding_len, &mode) == FAILURE) {
 		return;
 	}
@@ -319,7 +318,7 @@ static PHP_FUNCTION(pspell_new)
 		pspell_config_replace(config, "encoding", encoding);
 	}
 
-	if (argc > 4) {
+	if (mode) {
 		speed = mode & PSPELL_SPEED_MASK_INTERNAL;
 
 		/* First check what mode we want (how many suggestions) */
@@ -359,7 +358,6 @@ static PHP_FUNCTION(pspell_new_personal)
 	char *personal, *language, *spelling = NULL, *jargon = NULL, *encoding = NULL;
 	int personal_len, language_len, spelling_len = 0, jargon_len = 0, encoding_len = 0;
 	long mode = 0L,  speed = 0L;
-	int argc = ZEND_NUM_ARGS();
 	int ind;
 
 #ifdef PHP_WIN32
@@ -374,7 +372,7 @@ static PHP_FUNCTION(pspell_new_personal)
 	PspellManager *manager;
 	PspellConfig *config;
 
-	if (zend_parse_parameters(argc TSRMLS_CC, "ps|sssl", &personal, &personal_len, &language, &language_len, 
+	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "ps|sssl", &personal, &personal_len, &language, &language_len,
 		&spelling, &spelling_len, &jargon, &jargon_len, &encoding, &encoding_len, &mode) == FAILURE) {
 		return;
 	}
@@ -424,7 +422,7 @@ static PHP_FUNCTION(pspell_new_personal)
 		pspell_config_replace(config, "encoding", encoding);
 	}
 
-	if (argc > 5) {
+	if (mode) {
 		speed = mode & PSPELL_SPEED_MASK_INTERNAL;
 
 		/* First check what mode we want (how many suggestions) */

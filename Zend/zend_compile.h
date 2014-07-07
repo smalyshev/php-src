@@ -274,6 +274,7 @@ struct _zend_op_array {
 	zend_uint num_args;
 	zend_uint required_num_args;
 	zend_arg_info *arg_info;
+	HashTable *arg_offsets;
 	/* END of common elements */
 
 	zend_uint *refcount;
@@ -331,6 +332,7 @@ typedef struct _zend_internal_function {
 	zend_uint num_args;
 	zend_uint required_num_args;
 	zend_arg_info *arg_info;
+	HashTable *arg_offsets;
 	/* END of common elements */
 
 	void (*handler)(INTERNAL_FUNCTION_PARAMETERS);
@@ -351,6 +353,7 @@ typedef union _zend_function {
 		zend_uint num_args;
 		zend_uint required_num_args;
 		zend_arg_info *arg_info;
+		HashTable *arg_offsets;
 	} common;
 
 	zend_op_array op_array;
@@ -361,12 +364,15 @@ typedef union _zend_function {
 typedef struct _zend_function_state {
 	zend_function *function;
 	void **arguments;
+	HashTable *additional_named_args;
 } zend_function_state;
 
 typedef struct _zend_function_call_entry {
 	zend_function *fbc;
 	zend_uint arg_num;
 	zend_bool uses_argument_unpacking;
+	zend_bool uses_named_args;
+	zend_bool uses_delayed_fcall;
 } zend_function_call_entry;
 
 typedef struct _zend_switch_entry {
@@ -388,9 +394,11 @@ typedef struct _call_slot {
 	zend_function     *fbc;
 	zval              *object;
 	zend_class_entry  *called_scope;
+	HashTable         *additional_named_args;
 	zend_uint          num_additional_args;
 	zend_bool          is_ctor_call;
 	zend_bool          is_ctor_result_used;
+	zend_bool          uses_named_args;
 } call_slot;
 
 struct _zend_execute_data {
@@ -503,6 +511,7 @@ void zend_do_pre_incdec(znode *result, const znode *op1, zend_uchar op TSRMLS_DC
 void zend_do_post_incdec(znode *result, const znode *op1, zend_uchar op TSRMLS_DC);
 
 void zend_do_begin_variable_parse(TSRMLS_D);
+void zend_do_end_variable_parse_ex(znode *variable, int type, int arg_offset, zend_bool is_named_arg TSRMLS_DC);
 void zend_do_end_variable_parse(znode *variable, int type, int arg_offset TSRMLS_DC);
 
 void zend_check_writable_variable(const znode *variable);
@@ -559,7 +568,7 @@ ZEND_API void zend_do_inheritance(zend_class_entry *ce, zend_class_entry *parent
 void zend_do_early_binding(TSRMLS_D);
 ZEND_API void zend_do_delayed_early_binding(const zend_op_array *op_array TSRMLS_DC);
 
-void zend_do_pass_param(znode *param, zend_uchar op TSRMLS_DC);
+void zend_do_pass_param(znode *param, zend_uchar op, znode *named_arg TSRMLS_DC);
 void zend_do_unpack_params(znode *params TSRMLS_DC);
 
 
@@ -811,6 +820,7 @@ int zend_add_literal(zend_op_array *op_array, const zval *zv TSRMLS_DC);
 #define ZEND_FETCH_STANDARD		    0x00000000
 #define ZEND_FETCH_ADD_LOCK		    0x08000000
 #define ZEND_FETCH_MAKE_REF		    0x04000000
+#define ZEND_FETCH_NAMED			0x00400000
 
 #define ZEND_ISSET				    0x02000000
 #define ZEND_ISEMPTY			    0x01000000

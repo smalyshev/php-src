@@ -1022,6 +1022,7 @@ static inline union _zend_function *zend_get_user_call_function(zend_class_entry
 	call_user_call->module = (ce->type == ZEND_INTERNAL_CLASS) ? ce->info.internal.module : NULL;
 	call_user_call->handler = zend_std_call_user_call;
 	call_user_call->arg_info = NULL;
+	call_user_call->arg_offsets = NULL;
 	call_user_call->num_args = 0;
 	call_user_call->scope = ce;
 	call_user_call->fn_flags = ZEND_ACC_CALL_VIA_HANDLER;
@@ -1162,6 +1163,7 @@ static inline union _zend_function *zend_get_user_callstatic_function(zend_class
 	callstatic_user_call->module   = (ce->type == ZEND_INTERNAL_CLASS) ? ce->info.internal.module : NULL;
 	callstatic_user_call->handler  = zend_std_callstatic_user_call;
 	callstatic_user_call->arg_info = NULL;
+	callstatic_user_call->arg_offsets = NULL;
 	callstatic_user_call->num_args = 0;
 	callstatic_user_call->scope    = ce;
 	callstatic_user_call->fn_flags = ZEND_ACC_STATIC | ZEND_ACC_PUBLIC | ZEND_ACC_CALL_VIA_HANDLER;

@@ -352,9 +352,7 @@ PHP_FUNCTION(round)
 		return;
 	}
 
-	if (ZEND_NUM_ARGS() >= 2) {
 		places = (int) precision;
-	}
 	convert_scalar_to_number_ex(value);
 
 	switch (Z_TYPE_PP(value)) {
@@ -660,7 +658,7 @@ PHP_FUNCTION(log1p)
    Returns the natural logarithm of the number, or the base log if base is specified */
 PHP_FUNCTION(log)
 {
-	double num, base = 0;
+	double num, base = M_E;
 	
 	if (zend_parse_parameters(ZEND_NUM_ARGS() TSRMLS_CC, "d|d", &num, &base) == FAILURE) {
 		return;

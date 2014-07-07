@@ -1434,7 +1434,7 @@ static spl_dual_it_object* spl_dual_it_construct(INTERNAL_FUNCTION_PARAMETERS, z
 			}
 			ce = Z_OBJCE_P(zobject);
 			if (!instanceof_function(ce, zend_ce_iterator TSRMLS_CC)) {
-				if (ZEND_NUM_ARGS() > 1) {
+				if (class_name != NULL) {
 					if (zend_lookup_class(class_name, class_name_len, &pce_cast TSRMLS_CC) == FAILURE 
 					|| !instanceof_function(ce, *pce_cast TSRMLS_CC)
 					|| !(*pce_cast)->get_iterator

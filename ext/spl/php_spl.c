@@ -480,7 +480,7 @@ PHP_FUNCTION(spl_autoload_register)
 		return;
 	}
 
-	if (ZEND_NUM_ARGS()) {
+	if (zcallable != NULL) {
 		if (Z_TYPE_P(zcallable) == IS_STRING) {
 			if (Z_STRLEN_P(zcallable) == sizeof("spl_autoload_call") - 1) {
 				if (!zend_binary_strcasecmp(Z_STRVAL_P(zcallable), sizeof("spl_autoload_call"), "spl_autoload_call", sizeof("spl_autoload_call"))) {

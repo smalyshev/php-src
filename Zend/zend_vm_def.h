@@ -2314,12 +2314,17 @@ ZEND_VM_HANDLER(113, ZEND_INIT_STATIC_METHOD_CALL, CONST|VAR, CONST|TMP|VAR|UNUS
 		}
 	} else {
 		if (UNEXPECTED(ce->constructor == NULL)) {
-			zend_error_noreturn(E_ERROR, "Cannot call constructor");
-		}
-		if (Z_OBJ(EX(This)) && Z_OBJ(EX(This))->ce != ce->constructor->common.scope && (ce->constructor->common.fn_flags & ZEND_ACC_PRIVATE)) {
-			zend_error_noreturn(E_ERROR, "Cannot call private %s::__construct()", ce->name->val);
-		}
-		fbc = ce->constructor;
+            if (Z_OBJ(EX(This)) && Z_OBJ(EX(This))->ce->parent == ce) {
+                fbc = &zend_null_function;
+            } else {
+                zend_error_noreturn(E_ERROR, "Cannot call constructor");
+            }
+		} else {
+		    if (Z_OBJ(EX(This)) && Z_OBJ(EX(This))->ce != ce->constructor->common.scope && (ce->constructor->common.fn_flags & ZEND_ACC_PRIVATE)) {
+			    zend_error_noreturn(E_ERROR, "Cannot call private %s::__construct()", ce->name->val);
+		    }
+		    fbc = ce->constructor;
+        }
 	}
 
 	object = NULL;
@@ -2649,7 +2654,17 @@ ZEND_VM_HANDLER(60, ZEND_DO_FCALL, ANY, ANY)
 
 	LOAD_OPLINE();
 
-	if (UNEXPECTED(fbc->type == ZEND_INTERNAL_FUNCTION)) {
+    if (UNEXPECTED(fbc->type == ZEND_NULL_FUNCTION)) {
+        
+        if(RETURN_VALUE_USED(opline)) {
+            zval *ret = EX_VAR(opline->result.var);
+            ZVAL_NULL(ret);
+        }
+		zend_vm_stack_free_args(call TSRMLS_CC);
+		zend_vm_stack_free_call_frame(call TSRMLS_CC);
+
+		ZEND_VM_C_GOTO(fcall_end);
+    } else if (UNEXPECTED(fbc->type == ZEND_INTERNAL_FUNCTION)) {
 		int should_change_scope = 0;
 		zval *ret;
 

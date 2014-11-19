@@ -531,6 +531,7 @@ ZEND_API zend_string *zend_find_alias_name(zend_class_entry *ce, zend_string *na
 ZEND_API zend_string *zend_resolve_method_name(zend_class_entry *ce, zend_function *f);
 
 ZEND_API void zend_ctor_make_null(zend_execute_data *execute_data);
+ZEND_API zend_internal_function *zend_create_null_function(zend_class_entry *scope TSRMLS_DC);
 
 #define add_method(arg, key, method)	add_assoc_function((arg), (key), (method))
 

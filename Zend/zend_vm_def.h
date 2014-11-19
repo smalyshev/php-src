@@ -2298,7 +2298,15 @@ ZEND_VM_HANDLER(113, ZEND_INIT_STATIC_METHOD_CALL, CONST|VAR, CONST|TMP|VAR|UNUS
 			fbc = zend_std_get_static_method(ce, Z_STR_P(function_name), ((OP2_TYPE == IS_CONST) ? (opline->op2.zv + 1) : NULL) TSRMLS_CC);
 		}
 		if (UNEXPECTED(fbc == NULL)) {
-			zend_error_noreturn(E_ERROR, "Call to undefined method %s::%s()", ce->name->val, Z_STRVAL_P(function_name));
+            if (Z_OBJ(EX(This)) && Z_OBJ(EX(This))->ce->parent == ce && 
+				(strcasecmp(Z_STRVAL_P(function_name), ZEND_DESTRUCTOR_FUNC_NAME) == 0 ||
+					strcasecmp(Z_STRVAL_P(function_name), ZEND_CONSTRUCTOR_FUNC_NAME) == 0 ||
+					strcasecmp(Z_STRVAL_P(function_name), ZEND_CLONE_FUNC_NAME) == 0)) {
+						/* We're doing parent call, check for special methods */
+             		   fbc = (zend_function *)zend_create_null_function(ce TSRMLS_CC);
+			} else {
+				zend_error_noreturn(E_ERROR, "Call to undefined method %s::%s()", ce->name->val, Z_STRVAL_P(function_name));
+			}
 		}
 		if (OP2_TYPE == IS_CONST &&
 		    EXPECTED(fbc->type <= ZEND_USER_FUNCTION) &&
@@ -2315,7 +2323,7 @@ ZEND_VM_HANDLER(113, ZEND_INIT_STATIC_METHOD_CALL, CONST|VAR, CONST|TMP|VAR|UNUS
 	} else {
 		if (UNEXPECTED(ce->constructor == NULL)) {
             if (Z_OBJ(EX(This)) && Z_OBJ(EX(This))->ce->parent == ce) {
-                fbc = &zend_null_function;
+                fbc = (zend_function *)zend_create_null_function(ce TSRMLS_CC);
             } else {
                 zend_error_noreturn(E_ERROR, "Cannot call constructor");
             }
@@ -2654,17 +2662,7 @@ ZEND_VM_HANDLER(60, ZEND_DO_FCALL, ANY, ANY)
 
 	LOAD_OPLINE();
 
-    if (UNEXPECTED(fbc->type == ZEND_NULL_FUNCTION)) {
-        
-        if(RETURN_VALUE_USED(opline)) {
-            zval *ret = EX_VAR(opline->result.var);
-            ZVAL_NULL(ret);
-        }
-		zend_vm_stack_free_args(call TSRMLS_CC);
-		zend_vm_stack_free_call_frame(call TSRMLS_CC);
-
-		ZEND_VM_C_GOTO(fcall_end);
-    } else if (UNEXPECTED(fbc->type == ZEND_INTERNAL_FUNCTION)) {
+    if (UNEXPECTED(fbc->type == ZEND_INTERNAL_FUNCTION)) {
 		int should_change_scope = 0;
 		zval *ret;
 
@@ -2764,7 +2762,18 @@ ZEND_VM_HANDLER(60, ZEND_DO_FCALL, ANY, ANY)
 				zend_execute_ex(call TSRMLS_CC);
 			}
 		}
-	} else { /* ZEND_OVERLOADED_FUNCTION */
+	} else if (UNEXPECTED(fbc->type == ZEND_NULL_FUNCTION)) {
+        if(RETURN_VALUE_USED(opline)) {
+            zval *ret = EX_VAR(opline->result.var);
+            ZVAL_NULL(ret);
+        }
+		zend_vm_stack_free_args(call TSRMLS_CC);
+		zend_vm_stack_free_call_frame(call TSRMLS_CC);
+		efree(fbc);
+		fbc = NULL;
+
+		ZEND_VM_C_GOTO(fcall_end_change_scope);
+    } else { /* ZEND_OVERLOADED_FUNCTION */
 		EG(scope) = fbc->common.scope;
 
 		ZVAL_NULL(EX_VAR(opline->result.var));

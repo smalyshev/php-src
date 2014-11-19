@@ -1664,6 +1664,19 @@ ZEND_API int zend_set_local_var_str(const char *name, int len, zval *value, int 
 }
 /* }}} */
 
+ZEND_API zend_internal_function *zend_create_null_function(zend_class_entry *scope TSRMLS_DC)
+{
+    zend_internal_function *internal_function;
+    internal_function = ecalloc(1, sizeof(zend_internal_function));
+    internal_function->handler = NULL;
+    internal_function->type = ZEND_NULL_FUNCTION;    
+    internal_function->scope = scope;
+    internal_function->function_name = NULL;
+	internal_function->fn_flags = ZEND_ACC_PUBLIC | ZEND_ACC_NEVER_CACHE;
+    
+    return internal_function;
+}
+
 /*
  * Local variables:
  * tab-width: 4

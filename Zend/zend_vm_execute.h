@@ -512,17 +512,7 @@ static int ZEND_FASTCALL  ZEND_DO_FCALL_SPEC_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 
 	LOAD_OPLINE();
 
-    if (UNEXPECTED(fbc->type == ZEND_NULL_FUNCTION)) {
-
-        if(RETURN_VALUE_USED(opline)) {
-            zval *ret = EX_VAR(opline->result.var);
-            ZVAL_NULL(ret);
-        }
-		zend_vm_stack_free_args(call TSRMLS_CC);
-		zend_vm_stack_free_call_frame(call TSRMLS_CC);
-
-		goto fcall_end;
-    } else if (UNEXPECTED(fbc->type == ZEND_INTERNAL_FUNCTION)) {
+    if (UNEXPECTED(fbc->type == ZEND_INTERNAL_FUNCTION)) {
 		int should_change_scope = 0;
 		zval *ret;
 
@@ -622,7 +612,18 @@ static int ZEND_FASTCALL  ZEND_DO_FCALL_SPEC_HANDLER(ZEND_OPCODE_HANDLER_ARGS)
 				zend_execute_ex(call TSRMLS_CC);
 			}
 		}
-	} else { /* ZEND_OVERLOADED_FUNCTION */
+	} else if (UNEXPECTED(fbc->type == ZEND_NULL_FUNCTION)) {
+        if(RETURN_VALUE_USED(opline)) {
+            zval *ret = EX_VAR(opline->result.var);
+            ZVAL_NULL(ret);
+        }
+		zend_vm_stack_free_args(call TSRMLS_CC);
+		zend_vm_stack_free_call_frame(call TSRMLS_CC);
+		efree(fbc);
+		fbc = NULL;
+
+		goto fcall_end_change_scope;
+    } else { /* ZEND_OVERLOADED_FUNCTION */
 		EG(scope) = fbc->common.scope;
 
 		ZVAL_NULL(EX_VAR(opline->result.var));
@@ -4202,7 +4203,15 @@ static int ZEND_FASTCALL  ZEND_INIT_STATIC_METHOD_CALL_SPEC_CONST_CONST_HANDLER(
 			fbc = zend_std_get_static_method(ce, Z_STR_P(function_name), ((IS_CONST == IS_CONST) ? (opline->op2.zv + 1) : NULL) TSRMLS_CC);
 		}
 		if (UNEXPECTED(fbc == NULL)) {
-			zend_error_noreturn(E_ERROR, "Call to undefined method %s::%s()", ce->name->val, Z_STRVAL_P(function_name));
+            if (Z_OBJ(EX(This)) && Z_OBJ(EX(This))->ce->parent == ce &&
+				(strcasecmp(Z_STRVAL_P(function_name), ZEND_DESTRUCTOR_FUNC_NAME) == 0 ||
+					strcasecmp(Z_STRVAL_P(function_name), ZEND_CONSTRUCTOR_FUNC_NAME) == 0 ||
+					strcasecmp(Z_STRVAL_P(function_name), ZEND_CLONE_FUNC_NAME) == 0)) {
+						/* We're doing parent call, check for special methods */
+             		   fbc = (zend_function *)zend_create_null_function(ce TSRMLS_CC);
+			} else {
+				zend_error_noreturn(E_ERROR, "Call to undefined method %s::%s()", ce->name->val, Z_STRVAL_P(function_name));
+			}
 		}
 		if (IS_CONST == IS_CONST &&
 		    EXPECTED(fbc->type <= ZEND_USER_FUNCTION) &&
@@ -4219,7 +4228,7 @@ static int ZEND_FASTCALL  ZEND_INIT_STATIC_METHOD_CALL_SPEC_CONST_CONST_HANDLER(
 	} else {
 		if (UNEXPECTED(ce->constructor == NULL)) {
             if (Z_OBJ(EX(This)) && Z_OBJ(EX(This))->ce->parent == ce) {
-                fbc = &zend_null_function;
+                fbc = (zend_function *)zend_create_null_function(ce TSRMLS_CC);
             } else {
                 zend_error_noreturn(E_ERROR, "Cannot call constructor");
             }
@@ -5568,7 +5577,15 @@ static int ZEND_FASTCALL  ZEND_INIT_STATIC_METHOD_CALL_SPEC_CONST_TMP_HANDLER(ZE
 			fbc = zend_std_get_static_method(ce, Z_STR_P(function_name), ((IS_TMP_VAR == IS_CONST) ? (opline->op2.zv + 1) : NULL) TSRMLS_CC);
 		}
 		if (UNEXPECTED(fbc == NULL)) {
-			zend_error_noreturn(E_ERROR, "Call to undefined method %s::%s()", ce->name->val, Z_STRVAL_P(function_name));
+            if (Z_OBJ(EX(This)) && Z_OBJ(EX(This))->ce->parent == ce &&
+				(strcasecmp(Z_STRVAL_P(function_name), ZEND_DESTRUCTOR_FUNC_NAME) == 0 ||
+					strcasecmp(Z_STRVAL_P(function_name), ZEND_CONSTRUCTOR_FUNC_NAME) == 0 ||
+					strcasecmp(Z_STRVAL_P(function_name), ZEND_CLONE_FUNC_NAME) == 0)) {
+						/* We're doing parent call, check for special methods */
+             		   fbc = (zend_function *)zend_create_null_function(ce TSRMLS_CC);
+			} else {
+				zend_error_noreturn(E_ERROR, "Call to undefined method %s::%s()", ce->name->val, Z_STRVAL_P(function_name));
+			}
 		}
 		if (IS_TMP_VAR == IS_CONST &&
 		    EXPECTED(fbc->type <= ZEND_USER_FUNCTION) &&
@@ -5585,7 +5602,7 @@ static int ZEND_FASTCALL  ZEND_INIT_STATIC_METHOD_CALL_SPEC_CONST_TMP_HANDLER(ZE
 	} else {
 		if (UNEXPECTED(ce->constructor == NULL)) {
             if (Z_OBJ(EX(This)) && Z_OBJ(EX(This))->ce->parent == ce) {
-                fbc = &zend_null_function;
+                fbc = (zend_function *)zend_create_null_function(ce TSRMLS_CC);
             } else {
                 zend_error_noreturn(E_ERROR, "Cannot call constructor");
             }
@@ -6810,7 +6827,15 @@ static int ZEND_FASTCALL  ZEND_INIT_STATIC_METHOD_CALL_SPEC_CONST_VAR_HANDLER(ZE
 			fbc = zend_std_get_static_method(ce, Z_STR_P(function_name), ((IS_VAR == IS_CONST) ? (opline->op2.zv + 1) : NULL) TSRMLS_CC);
 		}
 		if (UNEXPECTED(fbc == NULL)) {
-			zend_error_noreturn(E_ERROR, "Call to undefined method %s::%s()", ce->name->val, Z_STRVAL_P(function_name));
+            if (Z_OBJ(EX(This)) && Z_OBJ(EX(This))->ce->parent == ce &&
+				(strcasecmp(Z_STRVAL_P(function_name), ZEND_DESTRUCTOR_FUNC_NAME) == 0 ||
+					strcasecmp(Z_STRVAL_P(function_name), ZEND_CONSTRUCTOR_FUNC_NAME) == 0 ||
+					strcasecmp(Z_STRVAL_P(function_name), ZEND_CLONE_FUNC_NAME) == 0)) {
+						/* We're doing parent call, check for special methods */
+             		   fbc = (zend_function *)zend_create_null_function(ce TSRMLS_CC);
+			} else {
+				zend_error_noreturn(E_ERROR, "Call to undefined method %s::%s()", ce->name->val, Z_STRVAL_P(function_name));
+			}
 		}
 		if (IS_VAR == IS_CONST &&
 		    EXPECTED(fbc->type <= ZEND_USER_FUNCTION) &&
@@ -6827,7 +6852,7 @@ static int ZEND_FASTCALL  ZEND_INIT_STATIC_METHOD_CALL_SPEC_CONST_VAR_HANDLER(ZE
 	} else {
 		if (UNEXPECTED(ce->constructor == NULL)) {
             if (Z_OBJ(EX(This)) && Z_OBJ(EX(This))->ce->parent == ce) {
-                fbc = &zend_null_function;
+                fbc = (zend_function *)zend_create_null_function(ce TSRMLS_CC);
             } else {
                 zend_error_noreturn(E_ERROR, "Cannot call constructor");
             }
@@ -7750,7 +7775,15 @@ static int ZEND_FASTCALL  ZEND_INIT_STATIC_METHOD_CALL_SPEC_CONST_UNUSED_HANDLER
 			fbc = zend_std_get_static_method(ce, Z_STR_P(function_name), ((IS_UNUSED == IS_CONST) ? (opline->op2.zv + 1) : NULL) TSRMLS_CC);
 		}
 		if (UNEXPECTED(fbc == NULL)) {
-			zend_error_noreturn(E_ERROR, "Call to undefined method %s::%s()", ce->name->val, Z_STRVAL_P(function_name));
+            if (Z_OBJ(EX(This)) && Z_OBJ(EX(This))->ce->parent == ce &&
+				(strcasecmp(Z_STRVAL_P(function_name), ZEND_DESTRUCTOR_FUNC_NAME) == 0 ||
+					strcasecmp(Z_STRVAL_P(function_name), ZEND_CONSTRUCTOR_FUNC_NAME) == 0 ||
+					strcasecmp(Z_STRVAL_P(function_name), ZEND_CLONE_FUNC_NAME) == 0)) {
+						/* We're doing parent call, check for special methods */
+             		   fbc = (zend_function *)zend_create_null_function(ce TSRMLS_CC);
+			} else {
+				zend_error_noreturn(E_ERROR, "Call to undefined method %s::%s()", ce->name->val, Z_STRVAL_P(function_name));
+			}
 		}
 		if (IS_UNUSED == IS_CONST &&
 		    EXPECTED(fbc->type <= ZEND_USER_FUNCTION) &&
@@ -7767,7 +7800,7 @@ static int ZEND_FASTCALL  ZEND_INIT_STATIC_METHOD_CALL_SPEC_CONST_UNUSED_HANDLER
 	} else {
 		if (UNEXPECTED(ce->constructor == NULL)) {
             if (Z_OBJ(EX(This)) && Z_OBJ(EX(This))->ce->parent == ce) {
-                fbc = &zend_null_function;
+                fbc = (zend_function *)zend_create_null_function(ce TSRMLS_CC);
             } else {
                 zend_error_noreturn(E_ERROR, "Cannot call constructor");
             }
@@ -8780,7 +8813,15 @@ static int ZEND_FASTCALL  ZEND_INIT_STATIC_METHOD_CALL_SPEC_CONST_CV_HANDLER(ZEN
 			fbc = zend_std_get_static_method(ce, Z_STR_P(function_name), ((IS_CV == IS_CONST) ? (opline->op2.zv + 1) : NULL) TSRMLS_CC);
 		}
 		if (UNEXPECTED(fbc == NULL)) {
-			zend_error_noreturn(E_ERROR, "Call to undefined method %s::%s()", ce->name->val, Z_STRVAL_P(function_name));
+            if (Z_OBJ(EX(This)) && Z_OBJ(EX(This))->ce->parent == ce &&
+				(strcasecmp(Z_STRVAL_P(function_name), ZEND_DESTRUCTOR_FUNC_NAME) == 0 ||
+					strcasecmp(Z_STRVAL_P(function_name), ZEND_CONSTRUCTOR_FUNC_NAME) == 0 ||
+					strcasecmp(Z_STRVAL_P(function_name), ZEND_CLONE_FUNC_NAME) == 0)) {
+						/* We're doing parent call, check for special methods */
+             		   fbc = (zend_function *)zend_create_null_function(ce TSRMLS_CC);
+			} else {
+				zend_error_noreturn(E_ERROR, "Call to undefined method %s::%s()", ce->name->val, Z_STRVAL_P(function_name));
+			}
 		}
 		if (IS_CV == IS_CONST &&
 		    EXPECTED(fbc->type <= ZEND_USER_FUNCTION) &&
@@ -8797,7 +8838,7 @@ static int ZEND_FASTCALL  ZEND_INIT_STATIC_METHOD_CALL_SPEC_CONST_CV_HANDLER(ZEN
 	} else {
 		if (UNEXPECTED(ce->constructor == NULL)) {
             if (Z_OBJ(EX(This)) && Z_OBJ(EX(This))->ce->parent == ce) {
-                fbc = &zend_null_function;
+                fbc = (zend_function *)zend_create_null_function(ce TSRMLS_CC);
             } else {
                 zend_error_noreturn(E_ERROR, "Cannot call constructor");
             }
@@ -19283,7 +19324,15 @@ static int ZEND_FASTCALL  ZEND_INIT_STATIC_METHOD_CALL_SPEC_VAR_CONST_HANDLER(ZE
 			fbc = zend_std_get_static_method(ce, Z_STR_P(function_name), ((IS_CONST == IS_CONST) ? (opline->op2.zv + 1) : NULL) TSRMLS_CC);
 		}
 		if (UNEXPECTED(fbc == NULL)) {
-			zend_error_noreturn(E_ERROR, "Call to undefined method %s::%s()", ce->name->val, Z_STRVAL_P(function_name));
+            if (Z_OBJ(EX(This)) && Z_OBJ(EX(This))->ce->parent == ce &&
+				(strcasecmp(Z_STRVAL_P(function_name), ZEND_DESTRUCTOR_FUNC_NAME) == 0 ||
+					strcasecmp(Z_STRVAL_P(function_name), ZEND_CONSTRUCTOR_FUNC_NAME) == 0 ||
+					strcasecmp(Z_STRVAL_P(function_name), ZEND_CLONE_FUNC_NAME) == 0)) {
+						/* We're doing parent call, check for special methods */
+             		   fbc = (zend_function *)zend_create_null_function(ce TSRMLS_CC);
+			} else {
+				zend_error_noreturn(E_ERROR, "Call to undefined method %s::%s()", ce->name->val, Z_STRVAL_P(function_name));
+			}
 		}
 		if (IS_CONST == IS_CONST &&
 		    EXPECTED(fbc->type <= ZEND_USER_FUNCTION) &&
@@ -19300,7 +19349,7 @@ static int ZEND_FASTCALL  ZEND_INIT_STATIC_METHOD_CALL_SPEC_VAR_CONST_HANDLER(ZE
 	} else {
 		if (UNEXPECTED(ce->constructor == NULL)) {
             if (Z_OBJ(EX(This)) && Z_OBJ(EX(This))->ce->parent == ce) {
-                fbc = &zend_null_function;
+                fbc = (zend_function *)zend_create_null_function(ce TSRMLS_CC);
             } else {
                 zend_error_noreturn(E_ERROR, "Cannot call constructor");
             }
@@ -21594,7 +21643,15 @@ static int ZEND_FASTCALL  ZEND_INIT_STATIC_METHOD_CALL_SPEC_VAR_TMP_HANDLER(ZEND
 			fbc = zend_std_get_static_method(ce, Z_STR_P(function_name), ((IS_TMP_VAR == IS_CONST) ? (opline->op2.zv + 1) : NULL) TSRMLS_CC);
 		}
 		if (UNEXPECTED(fbc == NULL)) {
-			zend_error_noreturn(E_ERROR, "Call to undefined method %s::%s()", ce->name->val, Z_STRVAL_P(function_name));
+            if (Z_OBJ(EX(This)) && Z_OBJ(EX(This))->ce->parent == ce &&
+				(strcasecmp(Z_STRVAL_P(function_name), ZEND_DESTRUCTOR_FUNC_NAME) == 0 ||
+					strcasecmp(Z_STRVAL_P(function_name), ZEND_CONSTRUCTOR_FUNC_NAME) == 0 ||
+					strcasecmp(Z_STRVAL_P(function_name), ZEND_CLONE_FUNC_NAME) == 0)) {
+						/* We're doing parent call, check for special methods */
+             		   fbc = (zend_function *)zend_create_null_function(ce TSRMLS_CC);
+			} else {
+				zend_error_noreturn(E_ERROR, "Call to undefined method %s::%s()", ce->name->val, Z_STRVAL_P(function_name));
+			}
 		}
 		if (IS_TMP_VAR == IS_CONST &&
 		    EXPECTED(fbc->type <= ZEND_USER_FUNCTION) &&
@@ -21611,7 +21668,7 @@ static int ZEND_FASTCALL  ZEND_INIT_STATIC_METHOD_CALL_SPEC_VAR_TMP_HANDLER(ZEND
 	} else {
 		if (UNEXPECTED(ce->constructor == NULL)) {
             if (Z_OBJ(EX(This)) && Z_OBJ(EX(This))->ce->parent == ce) {
-                fbc = &zend_null_function;
+                fbc = (zend_function *)zend_create_null_function(ce TSRMLS_CC);
             } else {
                 zend_error_noreturn(E_ERROR, "Cannot call constructor");
             }
@@ -23839,7 +23896,15 @@ static int ZEND_FASTCALL  ZEND_INIT_STATIC_METHOD_CALL_SPEC_VAR_VAR_HANDLER(ZEND
 			fbc = zend_std_get_static_method(ce, Z_STR_P(function_name), ((IS_VAR == IS_CONST) ? (opline->op2.zv + 1) : NULL) TSRMLS_CC);
 		}
 		if (UNEXPECTED(fbc == NULL)) {
-			zend_error_noreturn(E_ERROR, "Call to undefined method %s::%s()", ce->name->val, Z_STRVAL_P(function_name));
+            if (Z_OBJ(EX(This)) && Z_OBJ(EX(This))->ce->parent == ce &&
+				(strcasecmp(Z_STRVAL_P(function_name), ZEND_DESTRUCTOR_FUNC_NAME) == 0 ||
+					strcasecmp(Z_STRVAL_P(function_name), ZEND_CONSTRUCTOR_FUNC_NAME) == 0 ||
+					strcasecmp(Z_STRVAL_P(function_name), ZEND_CLONE_FUNC_NAME) == 0)) {
+						/* We're doing parent call, check for special methods */
+             		   fbc = (zend_function *)zend_create_null_function(ce TSRMLS_CC);
+			} else {
+				zend_error_noreturn(E_ERROR, "Call to undefined method %s::%s()", ce->name->val, Z_STRVAL_P(function_name));
+			}
 		}
 		if (IS_VAR == IS_CONST &&
 		    EXPECTED(fbc->type <= ZEND_USER_FUNCTION) &&
@@ -23856,7 +23921,7 @@ static int ZEND_FASTCALL  ZEND_INIT_STATIC_METHOD_CALL_SPEC_VAR_VAR_HANDLER(ZEND
 	} else {
 		if (UNEXPECTED(ce->constructor == NULL)) {
             if (Z_OBJ(EX(This)) && Z_OBJ(EX(This))->ce->parent == ce) {
-                fbc = &zend_null_function;
+                fbc = (zend_function *)zend_create_null_function(ce TSRMLS_CC);
             } else {
                 zend_error_noreturn(E_ERROR, "Cannot call constructor");
             }
@@ -25318,7 +25383,15 @@ static int ZEND_FASTCALL  ZEND_INIT_STATIC_METHOD_CALL_SPEC_VAR_UNUSED_HANDLER(Z
 			fbc = zend_std_get_static_method(ce, Z_STR_P(function_name), ((IS_UNUSED == IS_CONST) ? (opline->op2.zv + 1) : NULL) TSRMLS_CC);
 		}
 		if (UNEXPECTED(fbc == NULL)) {
-			zend_error_noreturn(E_ERROR, "Call to undefined method %s::%s()", ce->name->val, Z_STRVAL_P(function_name));
+            if (Z_OBJ(EX(This)) && Z_OBJ(EX(This))->ce->parent == ce &&
+				(strcasecmp(Z_STRVAL_P(function_name), ZEND_DESTRUCTOR_FUNC_NAME) == 0 ||
+					strcasecmp(Z_STRVAL_P(function_name), ZEND_CONSTRUCTOR_FUNC_NAME) == 0 ||
+					strcasecmp(Z_STRVAL_P(function_name), ZEND_CLONE_FUNC_NAME) == 0)) {
+						/* We're doing parent call, check for special methods */
+             		   fbc = (zend_function *)zend_create_null_function(ce TSRMLS_CC);
+			} else {
+				zend_error_noreturn(E_ERROR, "Call to undefined method %s::%s()", ce->name->val, Z_STRVAL_P(function_name));
+			}
 		}
 		if (IS_UNUSED == IS_CONST &&
 		    EXPECTED(fbc->type <= ZEND_USER_FUNCTION) &&
@@ -25335,7 +25408,7 @@ static int ZEND_FASTCALL  ZEND_INIT_STATIC_METHOD_CALL_SPEC_VAR_UNUSED_HANDLER(Z
 	} else {
 		if (UNEXPECTED(ce->constructor == NULL)) {
             if (Z_OBJ(EX(This)) && Z_OBJ(EX(This))->ce->parent == ce) {
-                fbc = &zend_null_function;
+                fbc = (zend_function *)zend_create_null_function(ce TSRMLS_CC);
             } else {
                 zend_error_noreturn(E_ERROR, "Cannot call constructor");
             }
@@ -27278,7 +27351,15 @@ static int ZEND_FASTCALL  ZEND_INIT_STATIC_METHOD_CALL_SPEC_VAR_CV_HANDLER(ZEND_
 			fbc = zend_std_get_static_method(ce, Z_STR_P(function_name), ((IS_CV == IS_CONST) ? (opline->op2.zv + 1) : NULL) TSRMLS_CC);
 		}
 		if (UNEXPECTED(fbc == NULL)) {
-			zend_error_noreturn(E_ERROR, "Call to undefined method %s::%s()", ce->name->val, Z_STRVAL_P(function_name));
+            if (Z_OBJ(EX(This)) && Z_OBJ(EX(This))->ce->parent == ce &&
+				(strcasecmp(Z_STRVAL_P(function_name), ZEND_DESTRUCTOR_FUNC_NAME) == 0 ||
+					strcasecmp(Z_STRVAL_P(function_name), ZEND_CONSTRUCTOR_FUNC_NAME) == 0 ||
+					strcasecmp(Z_STRVAL_P(function_name), ZEND_CLONE_FUNC_NAME) == 0)) {
+						/* We're doing parent call, check for special methods */
+             		   fbc = (zend_function *)zend_create_null_function(ce TSRMLS_CC);
+			} else {
+				zend_error_noreturn(E_ERROR, "Call to undefined method %s::%s()", ce->name->val, Z_STRVAL_P(function_name));
+			}
 		}
 		if (IS_CV == IS_CONST &&
 		    EXPECTED(fbc->type <= ZEND_USER_FUNCTION) &&
@@ -27295,7 +27376,7 @@ static int ZEND_FASTCALL  ZEND_INIT_STATIC_METHOD_CALL_SPEC_VAR_CV_HANDLER(ZEND_
 	} else {
 		if (UNEXPECTED(ce->constructor == NULL)) {
             if (Z_OBJ(EX(This)) && Z_OBJ(EX(This))->ce->parent == ce) {
-                fbc = &zend_null_function;
+                fbc = (zend_function *)zend_create_null_function(ce TSRMLS_CC);
             } else {
                 zend_error_noreturn(E_ERROR, "Cannot call constructor");
             }

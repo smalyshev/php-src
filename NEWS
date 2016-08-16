@@ -1,6 +1,31 @@
 PHP                                                                        NEWS
 |||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||||
-?? ??? 2016, PHP 5.6.25
+?? ??? 2016, PHP 5.6.26
+
+- FTP:
+  . Fixed bug #70195 (Cannot upload file using ftp_put to FTPES with
+    require_ssl_reuse). (Benedict Singer)
+
+- JSON:
+  . Fixed bug #72787 (json_decode reads out of bounds). (Jakub Zelenka)
+
+- MSSQL:
+  . Fixed bug #72039 (Use of uninitialised value on mssql_guid_string). (Kalle)
+
+- PDO:
+  . Fixed bug #60665 (call to empty() on NULL result using PDO::FETCH_LAZY
+    returns false). (cmb)
+
+- PDO_pgsql:
+  . Implemented FR #72633 (Postgres PDO lastInsertId() should work without
+    specifying a sequence). (Pablo Santiago Sánchez, Matteo)
+  . Fixed bug #72759 (Regression in pgo_pgsql). (Anatol)
+
+- Standard:
+  . Fixed bug #72823 (strtr out-of-bound access). (cmb)
+  . Fixed bug #72278 (getimagesize returning FALSE on valid jpg). (cmb)
+
+18 Aug 2016, PHP 5.6.25
 
 - Core:
   . Fixed bug #72581 (previous property undefined in Exception after
@@ -26,6 +51,9 @@ PHP                                                                        NEWS
 - DOM:
   . Fixed bug #66502 (DOM document dangling reference). (Sean Heelan, cmb)
 
+- EXIF:
+  . Fixed bug #72735 (Samsung picture thumb not read (zero size)). (Kalle, Remi)
+
 - Filter:
   . Fixed bug #71745 (FILTER_FLAG_NO_RES_RANGE does not cover whole 127.0.0.0/8
     range). (bugs dot php dot net at majkl578 dot cz)
@@ -42,6 +70,7 @@ PHP                                                                        NEWS
     blendingmode). (cmb)
   . Fixed bug #66555 (Always false condition in ext/gd/libgd/gdkanji.c). (cmb)
   . Fixed bug #68712 (suspicious if-else statements). (cmb)
+  . Fixed bug #72709 (imagesetstyle() causes OOB read for empty $styles). (cmb)
 
 - Intl:
   . Partially fixed #72506 (idn_to_ascii for UTS #46 incorrect for long domain
@@ -56,6 +85,9 @@ PHP                                                                        NEWS
     position). (cmb)
   . Fixed bug #72710 (`mb_ereg` causes buffer overflow on regexp compile error).
     (ju1ius)
+
+- OCI8:
+  . Fixed invalid handle error with Implicit Result Sets. (Chris Jones)
 
 - PCRE:
   . Fixed bug #72688 (preg_match missing group names in matches). (cmb)
@@ -79,6 +111,8 @@ PHP                                                                        NEWS
   . Fixed bug #54431 (opendir() does not work with ftps:// wrapper). (vhuk)
   . Fixed bug #72667 (opendir() with ftp:// attempts to open data stream for
     non-existent directories). (vhuk)
+  . Fixed bug #72764 (ftps:// opendir wrapper data channel encryption fails
+    with IIS FTP 7.5, 8.5). (vhuk)
 
 - SPL:
   . Fixed bug #72122 (IteratorIterator breaks '@' error suppression). (kinglozzer)
@@ -120,7 +154,6 @@ PHP                                                                        NEWS
 - EXIF:
   . Fixed bug #50845 (exif_read_data() returns corrupted exif headers).
     (Bartosz Dziewoński)
-- EXIF:
   . Fixed bug #72603 (Out of bound read in exif_process_IFD_in_MAKERNOTE).
     (Stas)
   . Fixed bug #72618 (NULL Pointer Dereference in exif_process_user_comment).

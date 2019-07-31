@@ -1,13 +1,19 @@
 #!/bin/bash
 if [[ "$ENABLE_ZTS" == 1 ]]; then
-	TS="--enable-zts";
+	TS="--enable-zts"
 else
-	TS="";
+	TS=""
 fi
 if [[ "$ENABLE_DEBUG" == 1 ]]; then
-	DEBUG="--enable-debug";
+	DEBUG="--enable-debug"
 else
-	DEBUG="";
+	DEBUG=""
+fi
+
+if [[ "$ENABLE_FUZZ" == 1 ]]; then
+	SAPI="--enable-fuzzer --disable-phpdbg --disable-fpm --disable-cgi"
+else
+	SAPI="--enable-phpdbg --enable-fpm"
 fi
 
 if [[ -z "$CONFIG_LOG_FILE" ]]; then
@@ -29,11 +35,9 @@ MAKE_JOBS=${MAKE_JOBS:-2}
 ./configure \
 --enable-option-checking=fatal \
 --prefix="$HOME"/php-install \
-$CONFIG_QUIET \
 $DEBUG \
+$SAPI \
 $TS \
---enable-phpdbg \
---enable-fpm \
 --with-pdo-mysql=mysqlnd \
 --with-mysqli=mysqlnd \
 --with-pgsql \
@@ -76,8 +80,7 @@ $TS \
 --enable-sysvmsg \
 --with-ffi \
 --enable-zend-test=shared \
---enable-werror \
-> "$CONFIG_LOG_FILE"
+--enable-werror 
 
-make "-j${MAKE_JOBS}" $MAKE_QUIET > "$MAKE_LOG_FILE"
-make install >> "$MAKE_LOG_FILE"
+make "-j${MAKE_JOBS}"
+make install

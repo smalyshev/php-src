@@ -78,3 +78,13 @@ script:
 
 after_success:
     - ccache --show-stats
+
+jobs:
+    include:
+        - stage: fuzzer
+          name: "Fuzzer test"
+          before_script:
+              - echo "Fuzzer!"
+          script:
+              # Compile PHP
+              - travis_wait ./travis/fuzz.sh

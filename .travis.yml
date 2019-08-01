@@ -1,6 +1,10 @@
 git:
   quiet: true
 
+compiler:
+- clang
+- gcc
+
 dist: xenial
 language: c
 sudo: required

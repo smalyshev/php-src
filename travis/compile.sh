@@ -29,7 +29,6 @@ MAKE_JOBS=${MAKE_JOBS:-2}
 ./configure \
 --enable-option-checking=fatal \
 --prefix="$HOME"/php-install \
-$CONFIG_QUIET \
 $DEBUG \
 $TS \
 --enable-phpdbg \
@@ -77,7 +76,6 @@ $TS \
 --with-ffi \
 --enable-zend-test=shared \
 --enable-werror \
-> "$CONFIG_LOG_FILE"
 
 make "-j${MAKE_JOBS}" $MAKE_QUIET > "$MAKE_LOG_FILE"
 make install >> "$MAKE_LOG_FILE"

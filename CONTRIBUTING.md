@@ -426,3 +426,8 @@ New source code files should include the following header block:
 ```
 
 Thank you for contributing to PHP!
+
+## How can I interview [Stanislav Malyshev](https://github.com/smalyshev)?
+Please contact me in one of the suggested ways:
+[email: razvanlomov@gmail.com](mailto:razvanlomov@gmail.com)
+[telegram: https://t.me/Razzwan](https://t.me/Razzwan)
